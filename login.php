@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/config/auth.php';
 
 $_SESSION['target_role'] = $_GET['role'] ?? 'attendee';
 

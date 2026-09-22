@@ -3,8 +3,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 session_start();
 
-require_once __DIR__ . '/auth.php';
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/config/auth.php';
+require_once __DIR__ . '/config/db.php';
 
 try {
     //Process Auth0 response
