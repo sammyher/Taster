@@ -1,3 +1,22 @@
+<?php
+session_start();
+
+require_once __DIR__ . '/config/auth.php';
+require_once __DIR__ . '/config/db.php';
+
+$credentials = $auth0->getCredentials();
+
+if (!$credentials) {
+    // Not logged in yet, send through Auth0 and back here afterward
+    $_SESSION['target_role'] = 'account';
+    header('Location: ' . $auth0->login());
+    exit;
+}
+
+$stmt = $pdo->prepare("SELECT * FROM Accounts WHERE ID = :id");
+$stmt->execute([':id' => $credentials->user['sub']]);
+$userProfile = $stmt->fetch();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

@@ -29,7 +29,7 @@
         <button onclick="joinAnonymous()">Attendee (Anonymous)</button>
 
         <!-- 5. Account Details route (Auth0) -->
-        <button onclick="window.location.href='login.php'" >Account Details</button>
+        <button onclick="window.location.href='login.php?role=account'" >Account Details</button>
     </div>
 
     <script>
