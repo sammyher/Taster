@@ -41,7 +41,7 @@
 
         <!-- Paul -->
         <div class="card">
-            <img class="avatar" src="" alt="Paul">
+            <img class="avatar" src="assets/images/paul.jpg" alt="Paul">
             <div class="name">Paul</div>
             <div class="role">Participation</div>
             <p class="bio"></p>
