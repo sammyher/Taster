@@ -25,12 +25,10 @@
 
 ## Test path
 
-1. Run `schema.sql` and `seed-development.sql` locally.
-2. Incorporate the required schema additions.
-3. Copy `event-helpers.php` beside the existing `config/db.php`.
-4. Start the PHP development server from the project root.
-5. Visit `dev-login.php`.
-6. Create a small, festival, and tour event and inspect the resulting rows in Workbench.
+1. Run `schema.sql` and `seed-development.sql` locally in MySQL workbench.
+2. Start the PHP development server from the project root.
+3. Visit `dev-login.php`.
+4. Create a small, festival, and tour event and inspect the resulting rows in Workbench.
 
 These are intentionally plain development pages. Their purpose is to prove the
 database workflow before the team integrates final styling, Auth0, Catalog.beer,
