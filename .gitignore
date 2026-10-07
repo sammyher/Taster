@@ -1,5 +1,3 @@
 /vendor
 .env
-dev-login.php
-dev-logout.php
 Test local php server.txt
