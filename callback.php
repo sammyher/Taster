@@ -29,6 +29,11 @@ try {
         ':name'  => $displayName,
         ':email' => $email,
     ]);
+    $_SESSION['user'] = [
+        'id'          => $auth0Id,
+        'displayName' => $displayName,
+        'email'       => $email,
+    ];
 
 } catch (Exception $e) {
     die('Authentication or Database error: ' . htmlspecialchars($e->getMessage()));
