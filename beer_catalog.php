@@ -117,6 +117,7 @@ function displayValue($value): string
                 <th>ABV</th>
                 <th>IBU</th>
                 <th>Description</th>
+		<th>Favorite</th>
             </tr>
         </thead>
 
@@ -141,6 +142,16 @@ function displayValue($value): string
                             ? displayValue($beer['Description'])
                             : 'No description available' ?>
                     </td>
+		    <td>
+                        <form method="POST" action="favorite_beer.php">
+                            <input
+                            type="hidden"
+                            name="beer_id"
+                            value="<?= displayValue($beer['ID']) ?>"
+                            >
+                            <button type="submit">Favorite</button>
+                            </form>
+		    </td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

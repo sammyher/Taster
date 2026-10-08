@@ -1,288 +1,408 @@
 <?php
-require_once __DIR__ . '/config/db.php';
+declare(strict_types=1);
 
-$eventId = trim($_POST['event_id'] ?? $_GET['event_id'] ?? '');
-$containerId = trim($_POST['container_id'] ?? $_GET['container_id'] ?? '');
-$search = trim($_GET['search'] ?? '');
-$message = '';
-$error = '';
+require_once __DIR__ . '/config/event-helpers.php';
 
-$hasEvent = $eventId !== '';
-$hasContainer = $containerId !== '';
+$accountID = requireAccountID();
 
-if ($hasEvent === $hasContainer) {
-    $error = 'Provide either an event ID or a container ID.';
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $beerIds = $_POST['beer_ids'] ?? [];
+$eventId = trim((string) ($_POST['event_id'] ?? $_GET['event_id'] ?? ''));
+$containerId = trim((string) ($_POST['container_id'] ?? $_GET['container_id'] ?? ''));
+$search = trim((string) ($_GET['search'] ?? ''));
+$favoritesOnly = ($_GET['favorites'] ?? '') === '1';
 
-    if (!is_array($beerIds) || count($beerIds) === 0) {
-        $error = 'Select at least one beer.';
-    } else {
-        try {
-            if ($hasEvent) {
-                $stmt = $pdo->prepare("
-                    INSERT INTO ContainerBeers (ContainerID, EventID, BeerID)
-                    SELECT NULL, :event_id, :beer_id
-                    WHERE NOT EXISTS (
-                        SELECT 1
-                        FROM ContainerBeers
-                        WHERE EventID = :existing_event_id
-                          AND BeerID = :existing_beer_id
-                          AND ContainerID IS NULL
-                    )
-                ");
-
-                foreach ($beerIds as $beerId) {
-                    $stmt->execute([
-                        ':event_id' => $eventId,
-                        ':beer_id' => $beerId,
-                        ':existing_event_id' => $eventId,
-                        ':existing_beer_id' => $beerId,
-                    ]);
-                }
-            } else {
-                $stmt = $pdo->prepare("
-                    INSERT INTO ContainerBeers (ContainerID, EventID, BeerID)
-                    SELECT :container_id, NULL, :beer_id
-                    WHERE NOT EXISTS (
-                        SELECT 1
-                        FROM ContainerBeers
-                        WHERE ContainerID = :existing_container_id
-                          AND BeerID = :existing_beer_id
-                          AND EventID IS NULL
-                    )
-                ");
-
-                foreach ($beerIds as $beerId) {
-                    $stmt->execute([
-                        ':container_id' => $containerId,
-                        ':beer_id' => $beerId,
-                        ':existing_container_id' => $containerId,
-                        ':existing_beer_id' => $beerId,
-                    ]);
-                }
-            }
-
-            $message = 'Selected beers were added successfully.';
-        } catch (PDOException $e) {
-            $error = 'The beers could not be added. Make sure the event or container ID exists.';
-        }
-    }
+if ($eventId === '' && $containerId === '') {
+    exit('Missing event ID.');
 }
 
-$sql = "
-    SELECT ID, Name, Brewery, Type, ABV, IBU, Description
+if ($eventId !== '') {
+    $event = eventForHost($pdo, $eventId, $accountID);
+    requireDraft($event);
+
+    $pageTitle = $event['Title'];
+
+    $selectedQuery = $pdo->prepare(
+        'SELECT BeerID
+         FROM ContainerBeers
+         WHERE EventID = ? AND ContainerID IS NULL'
+    );
+    $selectedQuery->execute([$eventId]);
+
+    $selectedBeerIds = array_map(
+        'strval',
+        $selectedQuery->fetchAll(PDO::FETCH_COLUMN)
+    );
+} else {
+    $container = containerForHost($pdo, $containerId, $accountID);
+
+    if (($container['EventState'] ?? '') !== 'draft') {
+        exit('This event is no longer a draft.');
+    }
+
+    $pageTitle = $container['Name'];
+
+    $selectedQuery = $pdo->prepare(
+        'SELECT BeerID
+         FROM ContainerBeers
+         WHERE ContainerID = ?'
+    );
+    $selectedQuery->execute([$containerId]);
+
+    $selectedBeerIds = array_map(
+        'strval',
+        $selectedQuery->fetchAll(PDO::FETCH_COLUMN)
+    );
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrfToken();
+
+    $beerIds = $_POST['beer_ids'] ?? [];
+
+    if (!is_array($beerIds)) {
+        $beerIds = [];
+    }
+
+    $beerIds = array_values(array_unique(array_filter(
+        array_map('strval', $beerIds),
+        static fn(string $id): bool => $id !== ''
+    )));
+
+    $pdo->beginTransaction();
+
+    try {
+        if ($eventId !== '') {
+            $delete = $pdo->prepare(
+                'DELETE FROM ContainerBeers
+                 WHERE EventID = ? AND ContainerID IS NULL'
+            );
+            $delete->execute([$eventId]);
+
+            $insert = $pdo->prepare(
+                'INSERT INTO ContainerBeers
+                 (ContainerID, EventID, BeerID)
+                 VALUES (NULL, ?, ?)'
+            );
+        } else {
+            $delete = $pdo->prepare(
+                'DELETE FROM ContainerBeers
+                 WHERE ContainerID = ?'
+            );
+            $delete->execute([$containerId]);
+
+            $insert = $pdo->prepare(
+                'INSERT INTO ContainerBeers
+                 (ContainerID, EventID, BeerID)
+                 VALUES (?, NULL, ?)'
+            );
+        }
+
+        $validBeer = $pdo->prepare(
+            'SELECT ID FROM BeerCatalog WHERE ID = ?'
+        );
+
+        foreach ($beerIds as $beerId) {
+            $validBeer->execute([$beerId]);
+
+            if ($validBeer->fetchColumn() !== false) {
+                if ($eventId !== '') {
+                    $insert->execute([$eventId, $beerId]);
+                } else {
+                    $insert->execute([$containerId, $beerId]);
+                }
+            }
+        }
+
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        throw $error;
+    }
+
+    if ($eventId !== '') {
+        redirect(
+            'beer_selection.php?event_id=' .
+            urlencode($eventId) .
+            '&saved=1'
+        );
+    }
+
+    redirect(
+        'beer_selection.php?container_id=' .
+        urlencode($containerId) .
+        '&saved=1'
+    );
+}
+
+$sql = '
+    SELECT DISTINCT
+        BeerCatalog.ID,
+        BeerCatalog.Name,
+        BeerCatalog.Brewery,
+        BeerCatalog.Type,
+        BeerCatalog.ABV,
+        BeerCatalog.IBU,
+        BeerCatalog.Description
     FROM BeerCatalog
-";
+';
 
 $params = [];
 
+if ($favoritesOnly) {
+    $sql .= '
+        INNER JOIN FavoriteBeers
+            ON FavoriteBeers.BeerID = BeerCatalog.ID
+           AND FavoriteBeers.AccountID = :account_id
+    ';
+
+    $params['account_id'] = $accountID;
+}
+
 if ($search !== '') {
-    $sql .= "
-        WHERE Name LIKE :search
-           OR Brewery LIKE :search
-           OR Type LIKE :search
-    ";
+    $sql .= '
+        WHERE BeerCatalog.Name LIKE :search
+           OR BeerCatalog.Brewery LIKE :search
+           OR BeerCatalog.Type LIKE :search
+    ';
 
     $params['search'] = '%' . $search . '%';
 }
 
-$sql .= ' ORDER BY Name';
+$sql .= ' ORDER BY BeerCatalog.Name';
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$beers = $stmt->fetchAll();
+$statement = $pdo->prepare($sql);
+$statement->execute($params);
+$beers = $statement->fetchAll();
 
-function displayValue($value): string
-{
-    return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
-}
+pageStart('Choose Event Beers');
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Beers</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        background: #f7f7f7;
+    }
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background: #f7f7f7;
-        }
+    h1 {
+        text-align: center;
+    }
 
-        h1 {
-            text-align: center;
-        }
+    .top-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
 
-        .search-form {
-            text-align: center;
-            margin-bottom: 25px;
-        }
+    .search-form {
+        text-align: center;
+        margin-bottom: 25px;
+    }
 
-        input[type="text"] {
-            padding: 10px;
-            width: 300px;
-        }
+    input[type="text"] {
+        padding: 10px;
+        width: 300px;
+    }
 
-        button {
-            padding: 10px 16px;
-            cursor: pointer;
-        }
+    button {
+        padding: 10px 16px;
+        cursor: pointer;
+    }
 
-        .message {
-            padding: 10px;
-            margin-bottom: 20px;
-            background: #e8f5e9;
-            border: 1px solid #a5d6a7;
-        }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+    }
 
-        .error {
-            padding: 10px;
-            margin-bottom: 20px;
-            background: #ffebee;
-            border: 1px solid #ef9a9a;
-        }
+    th,
+    td {
+        padding: 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
+    th {
+        background: #333;
+        color: white;
+    }
 
-        th, td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
+    tr:nth-child(even) {
+        background: #f2f2f2;
+    }
 
-        th {
-            background: #333;
-            color: white;
-        }
+    .select-column {
+        width: 80px;
+        text-align: center;
+    }
 
-        tr:nth-child(even) {
-            background: #f2f2f2;
-        }
+    .favorite-column {
+        width: 110px;
+        text-align: center;
+    }
 
-        .select-column {
-            width: 70px;
-            text-align: center;
-        }
+    .message {
+        padding: 10px;
+        margin-bottom: 20px;
+        background: #e8f5e9;
+        border: 1px solid #a5d6a7;
+    }
+</style>
 
-        .submit-bar {
-            position: sticky;
-            top: 0;
-            padding: 10px 0;
-            background: #f7f7f7;
-            z-index: 10;
-        }
-    </style>
-</head>
-<body>
-    <h1>Select Beers</h1>
+<h1><?= html((string) $pageTitle) ?></h1>
 
-    <p>
-        <a href="beer_catalog.php">View Full Beer Catalog</a>
-        |
-        <a href="index.php">Return to Home</a>
-    </p>
+<div class="top-actions">
+    <a href="create-event.php">Back</a>
 
-    <?php if ($message !== ''): ?>
-        <p class="message"><?= displayValue($message) ?></p>
+    <?php if ($eventId !== ''): ?>
+        <form method="POST" action="open-event.php">
+            <input
+                type="hidden"
+                name="event"
+                value="<?= html($eventId) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= html(csrfToken()) ?>"
+            >
+
+            <button type="submit">Start/Open Event</button>
+        </form>
     <?php endif; ?>
+</div>
 
-    <?php if ($error !== ''): ?>
-        <p class="error"><?= displayValue($error) ?></p>
-    <?php endif; ?>
+<?php if (isset($_GET['saved'])): ?>
+    <p class="message">Beer list saved.</p>
+<?php endif; ?>
 
-    <form class="search-form" method="GET">
-        <?php if ($hasEvent): ?>
-            <input type="hidden" name="event_id" value="<?= displayValue($eventId) ?>">
-        <?php elseif ($hasContainer): ?>
-            <input type="hidden" name="container_id" value="<?= displayValue($containerId) ?>">
-        <?php endif; ?>
-
+<form class="search-form" method="GET">
+    <?php if ($eventId !== ''): ?>
         <input
-            type="text"
-            name="search"
-            placeholder="Search by name, brewery, or type"
-            value="<?= displayValue($search) ?>"
+            type="hidden"
+            name="event_id"
+            value="<?= html($eventId) ?>"
         >
+    <?php else: ?>
+        <input
+            type="hidden"
+            name="container_id"
+            value="<?= html($containerId) ?>"
+        >
+    <?php endif; ?>
 
-        <button type="submit">Search</button>
+    <input
+        type="text"
+        name="search"
+        placeholder="Search by name, brewery, or type"
+        value="<?= html($search) ?>"
+    >
 
-        <?php if ($hasEvent): ?>
-            <a href="beer_selection.php?event_id=<?= urlencode($eventId) ?>">Clear</a>
-        <?php elseif ($hasContainer): ?>
-            <a href="beer_selection.php?container_id=<?= urlencode($containerId) ?>">Clear</a>
-        <?php else: ?>
-            <a href="beer_selection.php">Clear</a>
-        <?php endif; ?>
-    </form>
+    <label>
+        <input
+            type="checkbox"
+            name="favorites"
+            value="1"
+            <?= $favoritesOnly ? 'checked' : '' ?>
+        >
+        Favorites only
+    </label>
 
-    <p>
-        Showing <?= count($beers) ?> beer(s)
-    </p>
+    <button type="submit">Search</button>
+</form>
 
-    <form method="POST">
-        <?php if ($hasEvent): ?>
-            <input type="hidden" name="event_id" value="<?= displayValue($eventId) ?>">
-        <?php elseif ($hasContainer): ?>
-            <input type="hidden" name="container_id" value="<?= displayValue($containerId) ?>">
-        <?php endif; ?>
+<p>Showing <?= count($beers) ?> beer(s)</p>
 
-        <div class="submit-bar">
-            <button type="submit">Add Selected Beers</button>
-        </div>
+<form method="POST">
+    <input
+        type="hidden"
+        name="csrf_token"
+        value="<?= html(csrfToken()) ?>"
+    >
 
-        <table>
-            <thead>
+    <?php if ($eventId !== ''): ?>
+        <input
+            type="hidden"
+            name="event_id"
+            value="<?= html($eventId) ?>"
+        >
+    <?php else: ?>
+        <input
+            type="hidden"
+            name="container_id"
+            value="<?= html($containerId) ?>"
+        >
+    <?php endif; ?>
+
+    <button type="submit">Save Beer List</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Brewery</th>
+                <th>Type</th>
+                <th>ABV</th>
+                <th>IBU</th>
+                <th>Description</th>
+                <th class="favorite-column">Favorite</th>
+                <th class="select-column">Select</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <?php foreach ($beers as $beer): ?>
                 <tr>
-                    <th class="select-column">Select</th>
-                    <th>Name</th>
-                    <th>Brewery</th>
-                    <th>Type</th>
-                    <th>ABV</th>
-                    <th>IBU</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
+                    <td><?= html((string) $beer['Name']) ?></td>
+                    <td><?= html((string) ($beer['Brewery'] ?? '')) ?></td>
+                    <td><?= html((string) ($beer['Type'] ?? '')) ?></td>
+                    <td>
+                        <?= $beer['ABV'] !== null
+                            ? html((string) $beer['ABV']) . '%'
+                            : 'N/A' ?>
+                    </td>
+                    <td>
+                        <?= $beer['IBU'] !== null
+                            ? html((string) $beer['IBU'])
+                            : 'N/A' ?>
+                    </td>
+                    <td>
+                        <?= ($beer['Description'] ?? '') !== ''
+                            ? html((string) $beer['Description'])
+                            : 'No description available' ?>
+                    </td>
 
-            <tbody>
-                <?php foreach ($beers as $beer): ?>
-                    <tr>
-                        <td class="select-column">
-                            <input
-                                type="checkbox"
-                                name="beer_ids[]"
-                                value="<?= displayValue($beer['ID']) ?>"
-                            >
-                        </td>
-                        <td><?= displayValue($beer['Name']) ?></td>
-                        <td><?= displayValue($beer['Brewery']) ?></td>
-                        <td><?= displayValue($beer['Type']) ?></td>
-                        <td>
-                            <?= $beer['ABV'] !== null
-                                ? displayValue($beer['ABV']) . '%'
-                                : 'N/A' ?>
-                        </td>
-                        <td>
-                            <?= $beer['IBU'] !== null
-                                ? displayValue($beer['IBU'])
-                                : 'N/A' ?>
-                        </td>
-                        <td>
-                            <?= $beer['Description'] !== ''
-                                ? displayValue($beer['Description'])
-                                : 'No description available' ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </form>
-</body>
-</html>
+                    <td class="favorite-column">
+                        <button
+                            type="submit"
+                            formaction="favorite_beer.php"
+                            name="beer_id"
+                            value="<?= html((string) $beer['ID']) ?>"
+                        >
+                            Favorite
+                        </button>
+                    </td>
+
+                    <td class="select-column">
+                        <input
+                            type="checkbox"
+                            name="beer_ids[]"
+                            value="<?= html((string) $beer['ID']) ?>"
+                            <?= in_array(
+                                (string) $beer['ID'],
+                                $selectedBeerIds,
+                                true
+                            ) ? 'checked' : '' ?>
+                        >
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</form>
+
+<?php pageEnd(); ?>

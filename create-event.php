@@ -57,10 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($type === 'small') {
-            redirect('edit-small-event.php?event=' . urlencode($eventID));
+            redirect('beer_selection.php?event_id=' . urlencode($eventID));
         }
-
-        redirect('edit-containers.php?event=' . urlencode($eventID));
+        redirect('beer_selection.php?event_id=' . urlencode($eventID));
     }
 }
 
