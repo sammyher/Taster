@@ -254,6 +254,12 @@ pageStart('Choose Event Beers');
 
 <h1><?= html((string) $pageTitle) ?></h1>
 
+<p>
+    <a href="custom_beer.php?event_id=<?= html($eventId) ?>">
+        Create Custom Beer
+    </a>
+</p>
+
 <div class="top-actions">
     <a href="create-event.php">Back</a>
 
