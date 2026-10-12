@@ -27,6 +27,9 @@
 
         <!-- 4. Anonymous Attendee route with 21+ gate -->
         <button onclick="joinAnonymous()">Attendee (Anonymous)</button>
+
+        <!-- 5. Archived event statistics -->
+        <button onclick="window.location.href='stats.php'">Archived Event Stats</button>
     </div>
 
     <script>
