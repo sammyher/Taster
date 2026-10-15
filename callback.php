@@ -35,6 +35,8 @@ try {
         'email'       => $email,
     ];
 
+$_SESSION['account_id'] = $auth0Id;
+
 } catch (Exception $e) {
     die('Authentication or Database error: ' . htmlspecialchars($e->getMessage()));
 }
