@@ -142,7 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ]);
 
                         $stmt = $pdo->prepare(
-                            'DELETE FROM ReviewTags WHERE ReviewID = ?'
+                            'DELETE FROM ReviewTags
+                             WHERE ReviewID = ?'
                         );
                         $stmt->execute([$reviewID]);
                     } else {
@@ -272,6 +273,7 @@ $reviews = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <title>Taster Reviews</title>
+
     <style>
         body {
             font-family: system-ui, sans-serif;
@@ -292,7 +294,9 @@ $reviews = $stmt->fetchAll();
             margin: 0.7rem 0;
         }
 
-        input, select, textarea {
+        input,
+        select,
+        textarea {
             padding: 0.45rem;
             max-width: 30rem;
         }
@@ -301,22 +305,68 @@ $reviews = $stmt->fetchAll();
             width: 100%;
         }
 
-        .tags {
+        .message {
+            color: #075f20;
+            font-weight: bold;
+        }
+
+        .review-form {
+            max-width: 575px;
+        }
+
+        .review-form > label {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.75rem 0;
+        }
+
+        .review-form > label > select,
+        .review-form > label > input,
+        .review-form > label > textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.45rem;
+        }
+
+        .review-form > label:nth-of-type(4) {
+            align-items: start;
+        }
+
+        .review-tags {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .review-tags strong {
+            min-width: 80px;
+        }
+
+        .tag-options {
             display: flex;
             flex-wrap: wrap;
             gap: 0.7rem;
         }
 
-        .tags label {
+        .tag-options label {
             margin: 0;
+            white-space: nowrap;
         }
 
-        .message {
-            color: #075f20;
-            font-weight: bold;
+        .save-review {
+            margin-top: 1.25rem;
+        }
+
+        .rating-stars {
+            white-space: nowrap;
+            letter-spacing: 0;
         }
     </style>
 </head>
+
 <body>
     <h1>Beer Reviews</h1>
 
@@ -347,9 +397,13 @@ $reviews = $stmt->fetchAll();
     <?php if ($selectedEvent && $selectedEvent['State'] === 'open'): ?>
         <h2>Submit a Review</h2>
 
-        <form method="post">
+        <form method="post" class="review-form">
             <input type="hidden" name="action" value="save_review">
-            <input type="hidden" name="event" value="<?= h($selectedEventID) ?>">
+            <input
+                type="hidden"
+                name="event"
+                value="<?= h($selectedEventID) ?>"
+            >
 
             <label>
                 Beer:
@@ -369,6 +423,7 @@ $reviews = $stmt->fetchAll();
                 Rating:
                 <select name="rating" required>
                     <option value="">Choose a rating</option>
+
                     <?php for ($rating = 1; $rating <= 5; $rating++): ?>
                         <option value="<?= $rating ?>">
                             <?= $rating ?>/5
@@ -391,25 +446,33 @@ $reviews = $stmt->fetchAll();
 
             <label>
                 Comment:
-                <textarea name="comment" maxlength="500" rows="4"></textarea>
+                <textarea
+                    name="comment"
+                    maxlength="500"
+                    rows="4"
+                ></textarea>
             </label>
 
-            <p>Tags:</p>
+            <div class="review-tags">
+                <strong>Tags:</strong>
 
-            <div class="tags">
-                <?php foreach ($tags as $tag): ?>
-                    <label>
-                        <input
-                            type="checkbox"
-                            name="tags[]"
-                            value="<?= h($tag['ID']) ?>"
-                        >
-                        <?= h($tag['Name']) ?>
-                    </label>
-                <?php endforeach; ?>
+                <div class="tag-options">
+                    <?php foreach ($tags as $tag): ?>
+                        <label>
+                            <input
+                                type="checkbox"
+                                name="tags[]"
+                                value="<?= h($tag['ID']) ?>"
+                            >
+                            <?= h($tag['Name']) ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
             </div>
 
-            <button type="submit">Save Review</button>
+            <button type="submit" class="save-review">
+                Save Review
+            </button>
         </form>
     <?php endif; ?>
 
@@ -430,11 +493,13 @@ $reviews = $stmt->fetchAll();
 
             <p>
                 Rating:
-                <?= str_repeat('★', (int) $review['Rating']) ?>
-                <?= str_repeat('☆', 5 - (int) $review['Rating']) ?>
+                <span class="rating-stars"><?= str_repeat('★', (int) $review['Rating']) . str_repeat('☆', 5 - (int) $review['Rating']) ?></span>
             </p>
 
-            <p>Quantity: <?= h((string) $review['Quantity']) ?></p>
+            <p>
+                Quantity:
+                <?= h((string) $review['Quantity']) ?>
+            </p>
 
             <?php if ($review['Tags']): ?>
                 <p>Tags: <?= h($review['Tags']) ?></p>
@@ -446,11 +511,21 @@ $reviews = $stmt->fetchAll();
 
             <form method="post">
                 <input type="hidden" name="action" value="upvote">
-                <input type="hidden" name="event" value="<?= h($selectedEventID) ?>">
-                <input type="hidden" name="review_id" value="<?= h($review['ID']) ?>">
+                <input
+                    type="hidden"
+                    name="event"
+                    value="<?= h($selectedEventID) ?>"
+                >
+                <input
+                    type="hidden"
+                    name="review_id"
+                    value="<?= h($review['ID']) ?>"
+                >
 
                 <button type="submit">
-                    <?= $review['HasUpvoted'] ? 'Remove Upvote' : 'Upvote' ?>
+                    <?= $review['HasUpvoted']
+                        ? 'Remove Upvote'
+                        : 'Upvote' ?>
                     (<?= (int) $review['Upvotes'] ?>)
                 </button>
             </form>
