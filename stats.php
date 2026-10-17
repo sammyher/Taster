@@ -4,26 +4,46 @@ declare(strict_types=1);
 
 session_start();
 
+// Reuse the existing Auth0 configuration without changing the main login flow.
 require_once __DIR__ . '/config/auth.php';
-require_once __DIR__ . '/config/db.php';
 
 function statsHtml(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-$requestedEventID = trim((string) ($_GET['event'] ?? $_GET['event_id'] ?? ''));
 $credentials = $auth0->getCredentials();
 
+// The existing login.php and callback.php remain unchanged. A user who is not
+// signed in can use the existing attendee login, then return to this page.
 if (!$credentials) {
-    if ($requestedEventID !== '') {
-        $_SESSION['stats_event_id'] = $requestedEventID;
-    }
-
-    $_SESSION['target_role'] = 'stats';
-    header('Location: ' . $auth0->login());
+    ?>
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Archived Event Stats | Taster</title>
+        <style>
+            body { margin: 0; background: #f8fafc; color: #1f2937; font-family: sans-serif; }
+            main { width: min(34rem, calc(100% - 2rem)); margin: 8rem auto; padding: 2rem; background: #fff; border: 1px solid #e2e8f0; border-radius: .85rem; }
+            a { display: inline-block; margin: .5rem .75rem .25rem 0; color: #2563eb; }
+        </style>
+    </head>
+    <body>
+    <main>
+        <h1>Archived event stats</h1>
+        <p>Sign in through the existing attendee login before viewing archived event statistics.</p>
+        <a href="login.php?role=attendee">Sign in</a>
+        <a href="index.php">Back to Home</a>
+    </main>
+    </body>
+    </html>
+    <?php
     exit;
 }
+
+require_once __DIR__ . '/config/db.php';
 
 $accountID = (string) ($credentials->user['sub'] ?? '');
 
@@ -32,11 +52,8 @@ if ($accountID === '') {
     exit('Unable to identify the signed-in account.');
 }
 
-$eventID = $requestedEventID !== ''
-    ? $requestedEventID
-    : trim((string) ($_SESSION['stats_event_id'] ?? ''));
-unset($_SESSION['stats_event_id']);
-
+$requestedEventID = trim((string) ($_GET['event'] ?? $_GET['event_id'] ?? ''));
+$eventID = $requestedEventID;
 $events = [];
 $selectedEvent = null;
 $eventStats = [
@@ -51,7 +68,7 @@ $beerStats = [];
 $errorMessage = '';
 
 try {
-    // A user's event membership is the link between their account and an event.
+    // Event membership connects the authenticated account to archived events.
     $eventStatement = $pdo->prepare(
         "SELECT DISTINCT e.ID, e.Title, e.Type, e.State, e.CreatedAt
          FROM Events e
@@ -149,111 +166,41 @@ $totalQuantity = (float) ($eventStats['total_quantity'] ?? 0);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Archived Event Stats | Taster</title>
     <style>
-        :root {
-            color-scheme: light;
-            --ink: #1f2937;
-            --muted: #64748b;
-            --line: #e2e8f0;
-            --panel: #ffffff;
-            --accent: #2563eb;
-            --page: #f8fafc;
-        }
-
+        :root { color-scheme: light; --ink: #1f2937; --muted: #64748b; --line: #e2e8f0; --panel: #fff; --accent: #2563eb; --page: #f8fafc; }
         * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            background: var(--page);
-            color: var(--ink);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-        .page {
-            width: min(1100px, calc(100% - 2rem));
-            margin: 0 auto;
-            padding: 2.5rem 0 4rem;
-        }
+        body { margin: 0; background: var(--page); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        .page { width: min(1100px, calc(100% - 2rem)); margin: 0 auto; padding: 2.5rem 0 4rem; }
         .header { margin-bottom: 1.5rem; }
-        .header h1 { margin: 0 0 0.45rem; }
+        .header h1 { margin: 0 0 .45rem; }
         .header p { margin: 0; color: var(--muted); }
-        .panel {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 0.85rem;
-            padding: 1.25rem;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.04);
-        }
-        .event-picker {
-            display: flex;
-            align-items: end;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-        .event-picker label {
-            display: grid;
-            gap: 0.35rem;
-            min-width: min(100%, 28rem);
-            flex: 1;
-            font-weight: 600;
-        }
-        select, button {
-            font: inherit;
-            border: 1px solid #cbd5e1;
-            border-radius: 0.45rem;
-            padding: 0.65rem 0.75rem;
-            background: #fff;
-        }
-        button { cursor: pointer; background: var(--accent); color: #fff; border-color: var(--accent); }
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0.85rem;
-            margin-bottom: 1.25rem;
-        }
-        .stat-card {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 0.75rem;
-            padding: 1rem;
-        }
-        .stat-card span { display: block; color: var(--muted); font-size: 0.9rem; }
-        .stat-card strong { display: block; margin-top: 0.3rem; font-size: 1.65rem; }
-        .content-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 0.8fr);
-            gap: 1.25rem;
-            align-items: start;
-        }
-        h2 { margin: 0 0 0.85rem; font-size: 1.15rem; }
+        .panel, .stat-card { background: var(--panel); border: 1px solid var(--line); border-radius: .85rem; box-shadow: 0 5px 18px rgba(15, 23, 42, .04); }
+        .panel { padding: 1.25rem; margin-bottom: 1.25rem; }
+        .event-picker { display: flex; align-items: end; gap: .75rem; flex-wrap: wrap; }
+        .event-picker label { display: grid; gap: .35rem; min-width: min(100%, 28rem); flex: 1; font-weight: 600; }
+        select, button { font: inherit; border: 1px solid #cbd5e1; border-radius: .45rem; padding: .65rem .75rem; background: #fff; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; margin-bottom: 1.25rem; }
+        .stat-card { padding: 1rem; }
+        .stat-card span { display: block; color: var(--muted); font-size: .9rem; }
+        .stat-card strong { display: block; margin-top: .3rem; font-size: 1.65rem; }
+        .content-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(16rem, .8fr); gap: 1.25rem; align-items: start; }
+        h2 { margin: 0 0 .85rem; font-size: 1.15rem; }
         .muted, .empty { color: var(--muted); }
         .empty { margin: 0; }
-        .error {
-            margin: 0;
-            border-left: 4px solid #dc2626;
-            background: #fef2f2;
-            color: #991b1b;
-            padding: 0.85rem 1rem;
-        }
+        .error { margin: 0; border-left: 4px solid #dc2626; background: #fef2f2; color: #991b1b; padding: .85rem 1rem; }
         .table-wrap { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--line); text-align: left; }
-        th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        th, td { padding: .75rem .5rem; border-bottom: 1px solid var(--line); text-align: left; }
+        th { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
         td:not(:first-child), th:not(:first-child) { text-align: right; }
         .beer-name { font-weight: 600; }
-        .beer-meta { display: block; color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
-        .rating-row { display: grid; grid-template-columns: 3.5rem 1fr 2.5rem; gap: 0.6rem; align-items: center; margin: 0.75rem 0; }
-        .rating-bar { height: 0.55rem; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+        .beer-meta { display: block; color: var(--muted); font-size: .85rem; margin-top: .2rem; }
+        .rating-row { display: grid; grid-template-columns: 3.5rem 1fr 2.5rem; gap: .6rem; align-items: center; margin: .75rem 0; }
+        .rating-bar { height: .55rem; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
         .rating-bar span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
-        .rating-row strong { text-align: right; font-size: 0.9rem; }
-        .footer-link { display: inline-block; margin-top: 0.25rem; color: var(--accent); }
-
-        @media (max-width: 760px) {
-            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .content-grid { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 440px) {
-            .summary-grid { grid-template-columns: 1fr; }
-            .page { width: min(100% - 1rem, 1100px); padding-top: 1.25rem; }
-        }
+        .rating-row strong { text-align: right; font-size: .9rem; }
+        .footer-link { display: inline-block; margin-top: .25rem; color: var(--accent); }
+        @media (max-width: 760px) { .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 440px) { .summary-grid { grid-template-columns: 1fr; } .page { width: min(100% - 1rem, 1100px); padding-top: 1.25rem; } }
     </style>
 </head>
 <body>
@@ -276,7 +223,7 @@ $totalQuantity = (float) ($eventStats['total_quantity'] ?? 0);
                         <?php foreach ($events as $event): ?>
                             <option
                                 value="<?= statsHtml((string) $event['ID']) ?>"
-                                <?= $selectedEvent !== null && $selectedEvent['ID'] === $event['ID'] ? 'selected' : '' ?>
+                                <?= $selectedEvent !== null && (string) $selectedEvent['ID'] === (string) $event['ID'] ? 'selected' : '' ?>
                             >
                                 <?= statsHtml((string) $event['Title']) ?>
                                 (<?= statsHtml((string) $event['CreatedAt']) ?>)

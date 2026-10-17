@@ -40,8 +40,6 @@ unset($_SESSION['target_role']);
 
 if ($role === 'host') {
     header('Location: host.php');
-} elseif ($role === 'stats') {
-    header('Location: stats.php');
 } else {
     header('Location: attendee.php');
 }
