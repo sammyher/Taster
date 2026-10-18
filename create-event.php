@@ -1,6 +1,10 @@
 <?php
-
 declare(strict_types=1);
+session_start();
+
+echo '<pre>';
+var_dump($_SESSION);
+echo '</pre>';
 
 require_once __DIR__ . '/config/event-helpers.php';
 
@@ -26,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($errors === []) {
         $eventID = generateID();
-        $participantID = generateID();
+        $hostID = $_SESSION['account_id'];
 
         $pdo->beginTransaction();
 
@@ -41,12 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'INSERT INTO Participants (ID, EventID, AccountID)
                  VALUES (?, ?, ?)'
             );
-            $statement->execute([$participantID, $eventID, $accountID]);
+            $statement->execute([$hostID, $eventID, $accountID]);
 
             $statement = $pdo->prepare(
                 'UPDATE Events SET HostID = ? WHERE ID = ?'
             );
-            $statement->execute([$participantID, $eventID]);
+            $statement->execute([$hostID, $eventID]);
 
             $pdo->commit();
         } catch (Throwable $error) {
