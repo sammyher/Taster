@@ -27,6 +27,9 @@
 
         <!-- 4. Anonymous Attendee route with 21+ gate -->
         <button onclick="joinAnonymous()">Attendee (Anonymous)</button>
+
+        <!-- 5. Account Details route (Auth0) -->
+        <button onclick="window.location.href='login.php?role=account'" >Account Details</button>
     </div>
 
     <script>

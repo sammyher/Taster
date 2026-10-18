@@ -2,6 +2,12 @@
 
 CS514 Database Product Project
 
+## Technical Architecture
+
+![Database Schema & Technical Architecture](assets/images/technical_document.png)
+
+---
+
 # Local Setup Guide
 
 ## 1. Install Dependencies
