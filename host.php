@@ -2,10 +2,6 @@
 
 session_start();
 
-//echo '<pre>';
-//var_dump($_SESSION);
-//echo '</pre>';
-
 require_once __DIR__ . '/config/event-helpers.php';
 
 /* ---------- PAGE SETTINGS ---------- */

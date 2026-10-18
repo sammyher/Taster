@@ -1,37 +1,39 @@
 <?php
 
-declare(strict_types=1);
+session_start();
 
 require_once __DIR__ . '/config/event-helpers.php';
 
-$accountID = requireAccountID();
-$eventID = (string) ($_GET['event'] ?? '');
-$event = eventForHost($pdo, $eventID, $accountID);
+$pdo->beginTransaction();
+$stmt = $pdo->prepare('SELECT * FROM Events WHERE JoinCode = ? LIMIT 1');
+$stmt->execute([$_SESSION['event_code']]);
+$event = $stmt->fetch();
+
+error_log(print_r($event, true)); //DEBUG
 
 if ($event['State'] !== 'open' || empty($event['JoinCode'])) {
     http_response_code(409);
     exit('This event is not open.');
 }
 
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-$joinURL = $scheme . '://' . $host . '/join.php?code=' . rawurlencode($event['JoinCode']);
+/* ---------- PAGE SETTINGS ---------- */
+$page_title   = $event['Title'];
+$page_heading = 'Welcome to ' . $event['Title'];
+$body_class   = 'centered';
 
-pageStart('Event lobby');
+/* ---------- FORM HANDLING ---------- */
+$errors     = [];
+$event_code = '';
+
+/* ---------- PAGE CONTENT ---------- */
+ob_start();
 ?>
-
-<h1><?= html($event['Title']) ?></h1>
 <p>Event state: <strong><?= html($event['State']) ?></strong></p>
 
 <h2>Join code</h2>
 <p class="join-code"><?= html($event['JoinCode']) ?></p>
 
-<h2>Invite link</h2>
-<p><a href="<?= html($joinURL) ?>"><?= html($joinURL) ?></a></p>
+<?php
+$page_content = ob_get_clean();
 
-<p class="muted">
-    The join page itself is to be implemented by the teammate responsible for participant joining (Paul).
-</p>
-
-<?php pageEnd(); ?>
-
+require __DIR__ . '/layout.php';

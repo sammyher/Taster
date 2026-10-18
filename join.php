@@ -43,7 +43,7 @@ $page_heading = 'Join an Event';
 $body_class   = 'centered';
 
 // $login_url    = 'login.php?role=attendee'; // Maybe go back to this unless we flesh out lobby.php more/combine the two
-$login_url    = 'lobby.php';
+$login_url    = 'event-lobby.php';
 
 // Names for anonymous
 $animals = [
