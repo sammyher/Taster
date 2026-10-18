@@ -6,16 +6,17 @@
 
 session_start();
 
-//echo '<pre>';
-//var_dump($_SESSION);
-//echo '</pre>';
-
 require_once __DIR__ . '/config/event-helpers.php';
 
-function event_code_exists(PDO $ece_pdo, string $ece_code): bool {
-    $ece_stmt = $ece_pdo->prepare('SELECT 1 FROM Events WHERE JoinCode = ? LIMIT 1');
-    $ece_stmt->execute([$ece_code]);
-    return (bool) $ece_stmt->fetchColumn();
+function find_event_id(PDO $fei_pdo, string $fei_code): ?string {
+    $fei_stmt = $fei_pdo->prepare('SELECT ID FROM Events WHERE JoinCode = ? LIMIT 1');
+    $fei_stmt->execute([$fei_code]);
+    $id = $fei_stmt->fetchColumn();
+    return ($id === false ? null : (string) $id);
+}
+
+function event_code_exists(PDO $pdo, string $code): bool {
+    return find_event_id($pdo, $code) !== null;
 }
 
 function account_exists(PDO $ae_pdo, string $ae_acc): bool {
@@ -23,6 +24,18 @@ function account_exists(PDO $ae_pdo, string $ae_acc): bool {
     $ae_stmt->execute([$ae_acc]);
     return (bool) $ae_stmt->fetchColumn();
 }
+
+function add_participant(PDO $pdo, string $event_id, ?string $account_id): string {
+    $participant_id = generateID();
+    $stmt = $pdo->prepare(
+        'INSERT INTO Participants (ID, EventID, AccountID)
+         VALUES (?, ?, ?)'
+    );
+    $stmt->execute([$participant_id, $event_id, $account_id]);
+
+    return $participant_id;
+}
+
 
 /* ---------- PAGE SETTINGS ---------- */
 $page_title   = 'Join an Event';
@@ -44,6 +57,7 @@ $animals = [
     'Python', 'Quagga', 'Rabbit', 'Raccoon', 'Rhino', 'Sheep', 'Shrew', 'Skunk',
     'Squirrel', 'Tiger', 'Turtle', 'Walrus', 'Wolf', 'Wolverine', 'Wombat',
 ];
+
 
 /* ---------- FORM HANDLING ---------- */
 $errors     = [];
@@ -68,44 +82,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['check'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    requireValidCsrfToken();
+    
+    $action = $_POST['action'] ?? '';
+    $event_code = strtoupper(trim($_POST['event_code'] ?? ''));
 
-    $event_code  = strtoupper(trim($_POST['event_code'] ?? ''));
+    $account_id = null;
+    $event_id = null;
+    $participant_id = null;
 
+    // Add participants to database
     if ($errors === []) {
         try {
             $pdo->beginTransaction();
 
             // Check if event_id is in the database
-            if (!event_code_exists($pdo, $event_code)) {
+            $event_id = find_event_id($pdo, $event_code);
+            if ($event_id === null) {
                 $errors[] = 'That Event Code was not found.';
             }
+
             // TODO: Check if the event is open
-            // Check if the account exists (don't include for anon)
+
+            // Check if the account exists
             $account_id = 'dev-account-001'; // Placeholder for testing, remove after account integration
-            if (!account_exists($pdo, $account_id)) {
-                $errors[] = 'That Event Code was not found.';
+            if ($action === 'attend' && !account_exists($pdo, $account_id)) {
+                $errors[] = 'Your account was not found.';
             }
-            if ($action === 'attend') {
-                $_SESSION['event_code'] = $event_code;
-                unset($_SESSION['anonymous']);
-                $_SESSION['account_id'] = 'dev-account-001'; // TODO: set to actual account, probably during the redirect to login/check if logged in already
-                header('Location: ' . $lobby_url); // TODO: make this redirect to login page if not logged in
-                exit;
-            } elseif ($action === 'anonymous') {
-                $_SESSION['event_code'] = $event_code;
-                $_SESSION['anonymous'] = true;
-                $_SESSION['account_id'] = 'Anonymous' . $animals[random_int(0, count($animals) - 1)];
-                header('Location: ' . $lobby_url);
-                exit;
-            } else {
-                $errors[] = 'Please choose one of the options.';
+            error_log("Event ID:" . $event_id);
+            if (empty($errors) && in_array($action, ['attend', 'anonymous'], true)) {
+                $participant_id = add_participant($pdo, $event_id, $action === 'attend' ? $account_id : null);
             }
+
+            $pdo->commit();
+
         } catch (Throwable $error) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             throw $error;
+        }
+    }
+    
+    // Page handling
+    if ($errors === []) {
+        if ($action === 'attend') {
+            $_SESSION['event_code'] = $event_code;
+            $_SESSION['participant_id'] = $participant_id;
+            $_SESSION['account_id'] = 'dev-account-001'; // replace when accounts
+            unset($_SESSION['anonymous']);
+            header('Location: ' . $login_url);
+            exit;
+        } elseif ($action === 'anonymous') {
+            $_SESSION['event_code'] = $event_code;
+            $_SESSION['participant_id'] = $participant_id;
+            if (empty($_SESSION['anonymous']) || empty($_SESSION['account_id'])) {
+                $_SESSION['username']   = 'Anonymous' . $animals[random_int(0, count($animals) - 1)];
+            }
+            $_SESSION['anonymous']  = true;
+            header('Location: ' . $login_url);
+            exit;
+        } else {
+            $errors[] = 'Please choose one of the options.';
         }
     }
 }
@@ -114,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ob_start();
 ?>
 <form method="post" action="" class="btn-group" novalidate>
+    <input type="hidden" name="csrf_token" value="<?= html(csrfToken()) ?>">
     <label for="event_code">Event Code</label>
     <input type="text" id="event_code" name="event_code"
            value="<?= htmlspecialchars($event_code, ENT_QUOTES, 'UTF-8') ?>"
