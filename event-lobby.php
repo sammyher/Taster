@@ -1,37 +1,55 @@
 <?php
-
 declare(strict_types=1);
 
 require_once __DIR__ . '/config/event-helpers.php';
 
-$accountID = requireAccountID();
-$eventID = (string) ($_GET['event'] ?? '');
-$event = eventForHost($pdo, $eventID, $accountID);
+$eventID = (string) ($_SESSION['event_id'] ?? '');
+$participantID = (string) ($_SESSION['participant_id'] ?? '');
 
-if ($event['State'] !== 'open' || empty($event['JoinCode'])) {
-    http_response_code(409);
-    exit('This event is not open.');
+if ($eventID === '' || $participantID === '') {
+    header('Location: index.php');
+    exit;
 }
 
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
-$joinURL = $scheme . '://' . $host . '/join.php?code=' . rawurlencode($event['JoinCode']);
+// Authorize access through event participation rather than event ownership.
+$stmt = $pdo->prepare(
+    'SELECT e.ID, e.Title, e.Type, e.State, p.AccountID
+     FROM Events e
+     JOIN Participants p ON p.EventID = e.ID
+     WHERE e.ID = ? AND p.ID = ?
+     LIMIT 1'
+);
+$stmt->execute([$eventID, $participantID]);
+$event = $stmt->fetch();
+
+if (!$event) {
+    unset($_SESSION['event_id'], $_SESSION['participant_id'], $_SESSION['event_code']);
+    http_response_code(403);
+    exit('You are not registered for this event.');
+}
 
 pageStart('Event lobby');
 ?>
 
 <h1><?= html($event['Title']) ?></h1>
+<p>Event type: <strong><?= html($event['Type']) ?></strong></p>
 <p>Event state: <strong><?= html($event['State']) ?></strong></p>
 
-<h2>Join code</h2>
-<p class="join-code"><?= html($event['JoinCode']) ?></p>
+<?php if (!empty($_SESSION['anonymous'])): ?>
+    <p>
+        Participating as
+        <strong><?= html($_SESSION['username'] ?? 'Anonymous attendee') ?></strong>
+    </p>
+<?php endif; ?>
 
-<h2>Invite link</h2>
-<p><a href="<?= html($joinURL) ?>"><?= html($joinURL) ?></a></p>
+<?php if ($event['State'] === 'open'): ?>
+    <h2>Event actions</h2>
+    <p><a href="reviews.php">View or submit beer reviews</a></p>
+<?php else: ?>
+    <p>This event is no longer open for new reviews.</p>
+    <p><a href="reviews.php">View event reviews</a></p>
+<?php endif; ?>
 
-<p class="muted">
-    The join page itself is to be implemented by the teammate responsible for participant joining (Paul).
-</p>
+<p><a href="index.php">Return home</a></p>
 
 <?php pageEnd(); ?>
-

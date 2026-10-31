@@ -1,0 +1,152 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Auth0\SDK\Utility\Toolkit;
+
+use Exception;
+use Throwable;
+
+use function is_array;
+use function is_bool;
+use function is_int;
+use function is_string;
+
+final readonly class Assert
+{
+    /**
+     * ArrayProcessor Constructor.
+     *
+     * @param array<array{0: mixed, 1: Throwable}> $subjects values to process
+     */
+    public function __construct(
+        private array $subjects,
+    ) {
+    }
+
+    /**
+     * Check that a variable is an array and is not empty.
+     *
+     * @throws Exception when subject is not an array or is empty
+     */
+    public function isArray(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_array($value)) {
+                throw $exception;
+            }
+
+            if ([] === $value) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is a boolean and is not null.
+     *
+     * @throws Exception when subject is not a boolean or is null
+     */
+    public function isBoolean(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_bool($value)) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is a non-empty string that contains a valid email address.
+     *
+     * @throws Exception when subject is not a valid email address
+     */
+    public function isEmail(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (false === filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is an integer and is not null.
+     *
+     * @throws Exception when subject is not an integer or is null
+     */
+    public function isInteger(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_int($value)) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check for invalid permissions with an array of permissions.
+     *
+     * @throws Exception when subject is not a permissions array or is empty
+     */
+    public function isPermissions(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_array($value)) {
+                throw $exception;
+            }
+
+            if ([] === $value) {
+                throw $exception;
+            }
+
+            foreach ($value as $permission) {
+                if (! isset($permission['permission_name'])) {
+                    throw $exception;
+                }
+
+                if (! isset($permission['resource_server_identifier'])) {
+                    throw $exception;
+                }
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is a string and is not empty.
+     *
+     * @throws Exception when subject is not a string or is empty
+     */
+    public function isString(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_string($value)) {
+                throw $exception;
+            }
+
+            if (0 === mb_strlen($value)) {
+                throw $exception;
+            }
+        }
+    }
+
+    /**
+     * Check that a variable is a string beginning with a valid URI scheme. Accepts any RFC 3986 scheme, including custom URNs (e.g. `urn:acme:token`), so it does not use FILTER_VALIDATE_URL.
+     *
+     * Only the presence of a scheme is validated, not the rest of the URI. `urn:` and `x:` pass. This is a cheap client-side guard to catch obvious mistakes before a network call, not a full URI validator.
+     *
+     * @throws Exception when subject is not a string or does not begin with a valid URI scheme
+     */
+    public function isUri(): void
+    {
+        foreach ($this->subjects as [$value, $exception]) {
+            if (! is_string($value)) {
+                throw $exception;
+            }
+
+            if (1 !== preg_match('/^[a-zA-Z][a-zA-Z0-9+.\-]*:/', $value)) {
+                throw $exception;
+            }
+        }
+    }
+}

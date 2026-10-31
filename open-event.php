@@ -84,5 +84,5 @@ if ($statement->rowCount() !== 1) {
     exit('The event could not be opened because its state changed.');
 }
 
-redirect('event-lobby.php?event=' . urlencode($eventID));
+redirect('host-lobby.php?event=' . urlencode($eventID));
 
