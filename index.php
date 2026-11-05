@@ -100,12 +100,6 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
         }
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
         form.btn-group { width: 100%; margin-top: 6px; }
-        form label {
-            text-align: center;
-            font-weight: 700;
-            font-size: 1rem;
-            color: #333;
-        }
         #event_code {
             text-align: center;
             font-size: 1.35rem;
@@ -149,44 +143,34 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             cursor: not-allowed;
         }
         .kahoot-btn {
-            background-color: #333333;
+            background-color: #cbd5e1;
             color: #ffffff;
             font-weight: 700;
             font-size: 1.15rem;
             padding: 14px 12px;
             border: none;
             border-radius: 6px;
-            box-shadow: 0 4px 0 #1a1a1a;
-            cursor: pointer;
+            box-shadow: none;
+            cursor: not-allowed;
             width: 100%;
             box-sizing: border-box;
-            transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
             letter-spacing: 0.5px;
         }
-        .kahoot-btn:hover:not(:disabled) {
-            background-color: #222222;
-            box-shadow: 0 4px 0 #000000;
-        }
-        .kahoot-btn:active:not(:disabled) {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #000000;
-        }
-        .kahoot-btn:disabled {
-            background-color: #94a3b8;
-            box-shadow: none;
-            opacity: 0.6;
-            cursor: not-allowed;
+        .kahoot-btn:not(:disabled) {
+            background-color: #2563eb;
             color: #ffffff;
+            box-shadow: 0 4px 0 #1d4ed8;
+            cursor: pointer;
         }
-        .code-status {
-            min-height: 1.4em;
-            margin: 0;
-            font-size: 0.9rem;
-            font-weight: 600;
-            text-align: center;
+        .kahoot-btn:not(:disabled):hover {
+            background-color: #1d4ed8;
+            box-shadow: 0 4px 0 #1e40af;
         }
-        .code-status.ok { color: #16a34a; }
-        .code-status.bad { color: #dc2626; }
+        .kahoot-btn:not(:disabled):active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #1e40af;
+        }
     </style>
 </head>
 <body>
@@ -230,13 +214,11 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
         <button onclick="window.location.href='login.php?role=host'">Host Event</button>
 
         <form method="post" action="join.php" class="btn-group">
-            <label for="event_code">Join an Event</label>
-
             <input
                 type="text"
                 id="event_code"
                 name="event_code"
-                placeholder="Event PIN"
+                placeholder="Game PIN"
                 maxlength="6"
                 minlength="6"
                 pattern="[A-Za-z0-9]{6}"
@@ -248,13 +230,13 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                 value="<?= htmlspecialchars($prefillCode, ENT_QUOTES, 'UTF-8') ?>"
             >
 
-            <p id="code-status" class="code-status" role="status"></p>
-
             <button
                 type="submit"
                 name="action"
                 value="<?= $isLoggedIn ? 'attend' : 'anonymous' ?>"
                 class="kahoot-btn"
+                id="enter-btn"
+                disabled
                 <?= !$isLoggedIn ? 'onclick="return confirm(\'Please confirm you are 21 years of age or older to enter.\')"' : '' ?>
             >
                 Enter
@@ -263,39 +245,20 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
     </div>
 
     <script>
-        function joinAnonymous() {
-            if (confirm("Please confirm you are 21 years of age or older to enter.")) {
-                window.location.href = "anonymous.php";
-            } else {
-                alert("Access Denied: You must be 21 or older.");
-            }
-        }
-    </script>
-    <script>
         (function () {
             const input = document.getElementById('event_code');
-            const status = document.getElementById('code-status');
-            const joinButtons = document.querySelectorAll(
-                'button[name="action"]'
-            );
+            const enterButton = document.getElementById('enter-btn');
 
             let timer = null;
             let controller = null;
             let codeIsValid = false;
 
-            function showStatus(message, className = '') {
-                status.textContent = message;
-                status.className =
-                    'code-status' + (className ? ' ' + className : '');
+            function setButtonEnabled(enabled) {
+                codeIsValid = enabled;
+                enterButton.disabled = !enabled;
             }
 
-            function setButtonsEnabled(enabled) {
-                joinButtons.forEach(function (button) {
-                    button.disabled = !enabled;
-                });
-            }
-
-            setButtonsEnabled(false);
+            setButtonEnabled(false);
 
             input.addEventListener('input', function () {
                 const code = input.value
@@ -303,8 +266,7 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                     .toUpperCase();
 
                 input.value = code;
-                codeIsValid = false;
-                setButtonsEnabled(false);
+                setButtonEnabled(false);
 
                 clearTimeout(timer);
 
@@ -313,11 +275,8 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                 }
 
                 if (!/^[A-Z0-9]{6}$/.test(code)) {
-                    showStatus('');
                     return;
                 }
-
-                showStatus('Checking…');
 
                 timer = setTimeout(function () {
                     controller = new AbortController();
@@ -333,47 +292,33 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                         if (!response.ok) {
                             throw new Error('Server error');
                         }
-
                         return response.json();
                     })
                     .then(function (data) {
-                        // Ignore an old response if the user changed the code.
                         if (input.value !== code) {
                             return;
                         }
-
-                        codeIsValid = data.valid === true;
-
-                        if (codeIsValid) {
-                            showStatus('✓ Code found', 'ok');
-                            setButtonsEnabled(true);
-                        } else {
-                            showStatus('✗ Code not found', 'bad');
-                            setButtonsEnabled(false);
-                        }
+                        setButtonEnabled(data.valid === true);
                     })
                     .catch(function (error) {
                         if (error.name === 'AbortError') {
                             return;
                         }
-
-                        showStatus('Could not check the code right now.');
-                        setButtonsEnabled(false);
+                        setButtonEnabled(false);
                     });
-                }, 250);
+                }, 150);
             });
 
-            // Prevent submission unless the server has confirmed the code.
+            // Prevent submission unless the server has confirmed the code is valid.
             input.form.addEventListener('submit', function (event) {
                 if (!codeIsValid) {
                     event.preventDefault();
-                    showStatus('Please enter a valid event code.', 'bad');
                 }
             });
-        
-        if (input.value) {
-            input.dispatchEvent(new Event('input'));
-        }
+
+            if (input.value) {
+                input.dispatchEvent(new Event('input'));
+            }
         })();
     </script>
 </body>
