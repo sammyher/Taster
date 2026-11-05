@@ -38,6 +38,7 @@ if (str_contains($rawName, '@')) {
     $rawName = preg_split('/[._-]/', $local)[0] ?? $local;
 }
 $firstWord = explode(' ', trim($rawName))[0];
+$firstWord = preg_replace('/\d+$/', '', $firstWord);
 $displayName = !empty($firstWord) ? ucfirst(strtolower($firstWord)) : 'Account';
 
 $prefillCode = strtoupper(trim((string) ($_GET['code'] ?? '')));
@@ -57,11 +58,11 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 80vh;
-            gap: 1rem;
+            min-height: 90vh;
             margin: 0;
+            padding: 0 16px 40px;
             position: relative;
+            box-sizing: border-box;
         }
         .top-nav {
             position: absolute;
@@ -69,13 +70,14 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             right: 24px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            max-width: calc(100% - 48px);
         }
         .pill-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 7px 14px;
+            padding: 7px 13px;
             font-size: 0.875rem;
             font-weight: 500;
             color: #475569;
@@ -85,6 +87,8 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             text-decoration: none;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .pill-btn:hover {
             color: #1e293b;
@@ -92,6 +96,12 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             background: #f8fafc;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
             transform: translateY(-1px);
+        }
+        .user-pill span {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .pill-btn-login {
             background-color: #2563eb;
@@ -117,6 +127,26 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             border-color: #b91c1c;
             box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
         }
+
+        .header-hero {
+            text-align: center;
+            margin-top: 5rem;
+            margin-bottom: 1.25rem;
+        }
+        .brand-title {
+            margin: 0 0 6px 0;
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.5px;
+        }
+        .brand-subtitle {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #4b5563;
+            font-weight: 400;
+        }
+
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
         form.btn-group { width: 100%; margin-top: 6px; }
         #event_code {
@@ -194,6 +224,40 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             transform: translateY(2px);
             box-shadow: 0 2px 0 #1e40af;
         }
+
+        /* Mobile Optimization (iPhone 16, SE, Android) */
+        @media (max-width: 480px) {
+            .top-nav {
+                top: 14px;
+                right: 12px;
+                left: 12px;
+                max-width: calc(100% - 24px);
+                justify-content: flex-end;
+                gap: 6px;
+            }
+            .pill-btn {
+                padding: 6px 9px;
+                font-size: 0.8rem;
+                gap: 4px;
+            }
+            .pill-btn svg {
+                width: 13px;
+                height: 13px;
+            }
+            .user-pill span {
+                max-width: 80px;
+            }
+            .header-hero {
+                margin-top: 4.5rem;
+                margin-bottom: 1rem;
+            }
+            .brand-title {
+                font-size: 2rem;
+            }
+            .brand-subtitle {
+                font-size: 0.95rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -208,7 +272,7 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
         </a>
 
         <?php if ($isLoggedIn): ?>
-            <a href="account.php" class="pill-btn" title="View Account Details">
+            <a href="account.php" class="pill-btn user-pill" title="View Account Details">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
@@ -234,8 +298,10 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
         <?php endif; ?>
     </div>
 
-    <h1>Taster</h1>
-    <p>Beer Tasting Event Platform</p>
+    <div class="header-hero">
+        <h1 class="brand-title">Taster</h1>
+        <p class="brand-subtitle">Beer Tasting Event Platform</p>
+    </div>
 
     <div class="btn-group">
         <!-- 1. Host route (Auth0) -->

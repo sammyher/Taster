@@ -36,6 +36,7 @@ try {
         }
 
         $firstName = explode(' ', trim($candidate))[0];
+        $firstName = preg_replace('/\d+$/', '', $firstName);
         $displayName = !empty($firstName) ? ucfirst(strtolower($firstName)) : 'User';
     }
 
