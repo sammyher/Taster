@@ -105,19 +105,17 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             border-color: #1d4ed8;
             box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
         }
-        .logout-link {
-            color: #94a3b8;
-            background: transparent;
-            border-color: transparent;
-            box-shadow: none;
-            font-size: 0.825rem;
-            padding: 6px 10px;
+        .pill-btn-logout {
+            background-color: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+            font-weight: 600;
         }
-        .logout-link:hover {
-            color: #ef4444;
-            background: #fef2f2;
-            border-color: #fecaca;
-            box-shadow: none;
+        .pill-btn-logout:hover {
+            background-color: #b91c1c;
+            color: #ffffff;
+            border-color: #b91c1c;
+            box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
         }
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
         form.btn-group { width: 100%; margin-top: 6px; }
@@ -217,7 +215,12 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                 </svg>
                 <span><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></span>
             </a>
-            <a href="logout.php" class="pill-btn logout-link" title="Log out">
+            <a href="logout.php" class="pill-btn pill-btn-logout" title="Log out">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
                 <span>Log out</span>
             </a>
         <?php else: ?>
