@@ -1,3 +1,29 @@
+<?php
+declare(strict_types=1);
+session_start();
+
+if (empty($_SESSION['account_id']) && file_exists(__DIR__ . '/config/auth.php')) {
+    try {
+        require_once __DIR__ . '/config/auth.php';
+        $credentials = $auth0->getCredentials();
+        if ($credentials) {
+            $_SESSION['account_id'] = $credentials->user['sub'];
+            $_SESSION['display_name'] = $credentials->user['name'] ?? $credentials->user['nickname'] ?? 'User';
+            $_SESSION['email'] = $credentials->user['email'] ?? '';
+        }
+    } catch (Throwable $e) {
+        // Not logged in or Auth0 session expired
+    }
+}
+
+$isLoggedIn = !empty($_SESSION['account_id']);
+$displayName = $_SESSION['display_name'] ?? 'Account';
+
+$prefillCode = strtoupper(trim((string) ($_GET['code'] ?? '')));
+if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
+    $prefillCode = '';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,7 +42,14 @@
             margin: 0;
             position: relative;
         }
-        .top-nav { position: absolute; top: 20px; right: 24px; }
+        .top-nav {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
         .pill-btn {
             display: inline-flex;
             align-items: center;
@@ -38,6 +71,32 @@
             background: #f8fafc;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
             transform: translateY(-1px);
+        }
+        .pill-btn-login {
+            background-color: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+            font-weight: 600;
+        }
+        .pill-btn-login:hover {
+            background-color: #1d4ed8;
+            color: #ffffff;
+            border-color: #1d4ed8;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        }
+        .logout-link {
+            color: #94a3b8;
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+            font-size: 0.825rem;
+            padding: 6px 10px;
+        }
+        .logout-link:hover {
+            color: #ef4444;
+            background: #fef2f2;
+            border-color: #fecaca;
+            box-shadow: none;
         }
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
         form.btn-group { width: 100%; margin-top: 6px; }
@@ -110,15 +169,29 @@
             </svg>
             <span>About</span>
         </a>
+
+        <?php if ($isLoggedIn): ?>
+            <a href="account.php" class="pill-btn" title="View Account Details">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></span>
+            </a>
+            <a href="logout.php" class="pill-btn logout-link" title="Log out">
+                <span>Log out</span>
+            </a>
+        <?php else: ?>
+            <a href="login.php?role=home" class="pill-btn pill-btn-login">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Log in</span>
+            </a>
+        <?php endif; ?>
     </div>
 
-    <?php
-        $prefillCode = strtoupper(trim((string) ($_GET['code'] ?? '')));
-
-        if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
-            $prefillCode = '';
-        }
-    ?>
     <h1>Taster</h1>
     <p>Beer Tasting Event Platform</p>
 
@@ -148,7 +221,7 @@
             <p id="code-status" class="code-status" role="status"></p>
 
             <button type="submit" name="action" value="attend">
-                Log In and Attend
+                Join Event
             </button>
 
             <button

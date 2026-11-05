@@ -55,8 +55,12 @@ if ($role === 'host') {
     header('Location: host.php');
 } elseif ($role === 'account') {
     header('Location: account.php');
-} else {
+} elseif ($role === 'home') {
+    header('Location: index.php');
+} elseif (!empty($_SESSION['pending_event_code'])) {
     header('Location: join.php?resume=1');
+} else {
+    header('Location: index.php');
 }
 
 exit;
