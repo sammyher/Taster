@@ -148,6 +148,36 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             opacity: 0.55;
             cursor: not-allowed;
         }
+        .kahoot-btn {
+            background-color: #333333;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1.15rem;
+            padding: 14px 12px;
+            border: none;
+            border-radius: 6px;
+            box-shadow: 0 4px 0 #1a1a1a;
+            cursor: pointer;
+            width: 100%;
+            box-sizing: border-box;
+            transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.1s ease;
+            letter-spacing: 0.5px;
+        }
+        .kahoot-btn:hover:not(:disabled) {
+            background-color: #222222;
+            box-shadow: 0 4px 0 #000000;
+        }
+        .kahoot-btn:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #000000;
+        }
+        .kahoot-btn:disabled {
+            background-color: #94a3b8;
+            box-shadow: none;
+            opacity: 0.6;
+            cursor: not-allowed;
+            color: #ffffff;
+        }
         .code-status {
             min-height: 1.4em;
             margin: 0;
@@ -220,19 +250,14 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
 
             <p id="code-status" class="code-status" role="status"></p>
 
-            <button type="submit" name="action" value="attend">
-                Join Event
-            </button>
-
             <button
                 type="submit"
                 name="action"
-                value="anonymous"
-                onclick="return confirm(
-                    'Please confirm you are 21 years of age or older.'
-                )"
+                value="<?= $isLoggedIn ? 'attend' : 'anonymous' ?>"
+                class="kahoot-btn"
+                <?= !$isLoggedIn ? 'onclick="return confirm(\'Please confirm you are 21 years of age or older to enter.\')"' : '' ?>
             >
-                Attend Anonymously
+                Enter
             </button>
         </form>
     </div>
