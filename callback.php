@@ -19,7 +19,26 @@ try {
 
     $auth0Id     = $userData['sub'];
     $email       = $userData['email'] ?? '';
-    $displayName = $userData['name'] ?? $userData['nickname'] ?? 'User';
+
+    // Extract first name from Auth0 profile claims or email username
+    $givenName = $userData['given_name'] ?? $userData['user_metadata']['given_name'] ?? $userData['user_metadata']['first_name'] ?? null;
+    if (!empty($givenName)) {
+        $displayName = trim((string) $givenName);
+    } else {
+        $candidate = trim((string) ($userData['name'] ?? $userData['nickname'] ?? ''));
+        if ($candidate === '' && !empty($email)) {
+            $candidate = $email;
+        }
+
+        if (str_contains($candidate, '@')) {
+            $local = explode('@', $candidate)[0];
+            $candidate = preg_split('/[._-]/', $local)[0] ?? $local;
+        }
+
+        $firstName = explode(' ', trim($candidate))[0];
+        $firstName = preg_replace('/\d+$/', '', $firstName);
+        $displayName = !empty($firstName) ? ucfirst(strtolower($firstName)) : 'User';
+    }
 
     //Insert or update the user in the Accounts table
     $stmt = $pdo->prepare("
@@ -55,8 +74,12 @@ if ($role === 'host') {
     header('Location: host.php');
 } elseif ($role === 'account') {
     header('Location: account.php');
-} else {
+} elseif ($role === 'home') {
+    header('Location: index.php');
+} elseif (!empty($_SESSION['pending_event_code'])) {
     header('Location: join.php?resume=1');
+} else {
+    header('Location: index.php');
 }
 
 exit;
