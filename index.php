@@ -7,8 +7,28 @@
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; gap: 1rem; margin: 0; position: relative; }
         .top-nav { position: absolute; top: 20px; right: 24px; }
-        .top-nav a { text-decoration: none; color: #333; font-size: 0.95rem; padding: 8px 16px; border-radius: 6px; border: 1px solid #ccc; background-color: #f7f7f7; display: inline-block; }
-        .top-nav a:hover { background-color: #ebebeb; }
+        .pill-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 9999px;
+            text-decoration: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+        .pill-btn:hover {
+            color: #1e293b;
+            border-color: #cbd5e1;
+            background: #f8fafc;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 220px; }
         button { padding: 12px; font-size: 1rem; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background-color: #f7f7f7; }
         button:hover { background-color: #ebebeb; }
@@ -19,7 +39,14 @@
 </head>
 <body>
     <div class="top-nav">
-        <a href="about.php">About</a>
+        <a href="about.php" class="pill-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>About</span>
+        </a>
     </div>
 
     <?php
