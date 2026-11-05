@@ -5,13 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taster - Home</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; gap: 1rem; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; gap: 1rem; margin: 0; position: relative; }
+        .top-nav { position: absolute; top: 20px; right: 24px; }
+        .top-nav a { text-decoration: none; color: #333; font-size: 0.95rem; padding: 8px 16px; border-radius: 6px; border: 1px solid #ccc; background-color: #f7f7f7; display: inline-block; }
+        .top-nav a:hover { background-color: #ebebeb; }
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 220px; }
         button { padding: 12px; font-size: 1rem; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background-color: #f7f7f7; }
         button:hover { background-color: #ebebeb; }
+        .code-status { min-height: 1.4em; margin: 0; font-size: 0.9rem; }
+        .code-status.ok { color: #2e7d32; }
+        .code-status.bad { color: #b00020; }
     </style>
 </head>
 <body>
+    <div class="top-nav">
+        <a href="about.php">About</a>
+    </div>
+
     <?php
         $prefillCode = strtoupper(trim((string) ($_GET['code'] ?? '')));
 
@@ -23,11 +33,8 @@
     <p>Beer Tasting Event Platform</p>
 
     <div class="btn-group">
-        <!-- 1. About section -->
-        <button onclick="window.location.href='about.php'">About</button>
-
-        <!-- 2. Host route (Auth0) -->
-        <button onclick="window.location.href='login.php?role=host'">Host</button>
+        <!-- 1. Host route (Auth0) -->
+        <button onclick="window.location.href='login.php?role=host'">Host Event</button>
 
         <form method="post" action="join.php" class="btn-group">
             <label for="event_code">Join an Event</label>
