@@ -119,11 +119,15 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             border-color: #333;
             box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
         }
+        #event_code:focus::placeholder {
+            color: transparent;
+        }
         #event_code::placeholder {
             font-weight: 700;
             font-size: 1.15rem;
             letter-spacing: 0.5px;
             color: #9ca3af;
+            transition: color 0.15s ease;
         }
         button {
             padding: 13px;
@@ -218,7 +222,7 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                 type="text"
                 id="event_code"
                 name="event_code"
-                placeholder="Game PIN"
+                placeholder="Event PIN"
                 maxlength="6"
                 minlength="6"
                 pattern="[A-Za-z0-9]{6}"
@@ -252,6 +256,17 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             let timer = null;
             let controller = null;
             let codeIsValid = false;
+
+            // Instantly clear placeholder on click / focus, restore on blur if empty
+            input.addEventListener('focus', function () {
+                this.placeholder = '';
+            });
+
+            input.addEventListener('blur', function () {
+                if (!this.value) {
+                    this.placeholder = 'Event PIN';
+                }
+            });
 
             function setButtonEnabled(enabled) {
                 codeIsValid = enabled;
