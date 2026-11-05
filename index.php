@@ -5,7 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taster - Home</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; gap: 1rem; margin: 0; position: relative; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 80vh;
+            gap: 1rem;
+            margin: 0;
+            position: relative;
+        }
         .top-nav { position: absolute; top: 20px; right: 24px; }
         .pill-btn {
             display: inline-flex;
@@ -29,12 +39,65 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
             transform: translateY(-1px);
         }
-        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 220px; }
-        button { padding: 12px; font-size: 1rem; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background-color: #f7f7f7; }
-        button:hover { background-color: #ebebeb; }
-        .code-status { min-height: 1.4em; margin: 0; font-size: 0.9rem; }
-        .code-status.ok { color: #2e7d32; }
-        .code-status.bad { color: #b00020; }
+        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
+        form.btn-group { width: 100%; margin-top: 6px; }
+        form label {
+            text-align: center;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #333;
+        }
+        #event_code {
+            text-align: center;
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            padding: 14px 10px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            background-color: #fff;
+            color: #222;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        #event_code:focus {
+            border-color: #333;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+        }
+        #event_code::placeholder {
+            font-weight: 700;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+            color: #9ca3af;
+        }
+        button {
+            padding: 13px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background-color: #f7f7f7;
+            transition: all 0.15s ease;
+        }
+        button:hover:not(:disabled) {
+            background-color: #ebebeb;
+        }
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .code-status {
+            min-height: 1.4em;
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+        }
+        .code-status.ok { color: #16a34a; }
+        .code-status.bad { color: #dc2626; }
     </style>
 </head>
 <body>
@@ -70,7 +133,7 @@
                 type="text"
                 id="event_code"
                 name="event_code"
-                placeholder="Enter six-character code"
+                placeholder="Event PIN"
                 maxlength="6"
                 minlength="6"
                 pattern="[A-Za-z0-9]{6}"
