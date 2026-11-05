@@ -137,6 +137,7 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             justify-content: center;
             width: 100%;
             max-width: 320px;
+            margin-bottom: 14vh;
         }
         .header-hero {
             text-align: center;
@@ -258,6 +259,9 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             }
             .user-pill span {
                 max-width: 80px;
+            }
+            .center-content {
+                margin-bottom: 12vh;
             }
             .header-hero {
                 margin-bottom: 1rem;
