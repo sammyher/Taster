@@ -58,9 +58,11 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 90vh;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100dvh;
             margin: 0;
-            padding: 0 16px 40px;
+            padding: 24px 16px;
             position: relative;
             box-sizing: border-box;
         }
@@ -128,14 +130,21 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
         }
 
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 320px;
+        }
         .header-hero {
             text-align: center;
-            margin-top: 5rem;
-            margin-bottom: 1.25rem;
+            margin: 0 0 1.25rem 0;
         }
         .brand-title {
             margin: 0 0 6px 0;
-            font-size: 2.25rem;
+            font-size: 2.5rem;
             font-weight: 800;
             color: #111827;
             letter-spacing: -0.5px;
@@ -227,6 +236,9 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
 
         /* Mobile Optimization (iPhone 16, SE, Android) */
         @media (max-width: 480px) {
+            body {
+                padding-top: 56px;
+            }
             .top-nav {
                 top: 14px;
                 right: 12px;
@@ -248,11 +260,10 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                 max-width: 80px;
             }
             .header-hero {
-                margin-top: 4.5rem;
                 margin-bottom: 1rem;
             }
             .brand-title {
-                font-size: 2rem;
+                font-size: 2.15rem;
             }
             .brand-subtitle {
                 font-size: 0.95rem;
@@ -298,45 +309,47 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
         <?php endif; ?>
     </div>
 
-    <div class="header-hero">
-        <h1 class="brand-title">Taster</h1>
-        <p class="brand-subtitle">Beer Tasting Event Platform</p>
-    </div>
+    <main class="center-content">
+        <div class="header-hero">
+            <h1 class="brand-title">Taster</h1>
+            <p class="brand-subtitle">Beer Tasting Event Platform</p>
+        </div>
 
-    <div class="btn-group">
-        <!-- 1. Host route (Auth0) -->
-        <button onclick="window.location.href='login.php?role=host'">Host Event</button>
+        <div class="btn-group">
+            <!-- 1. Host route (Auth0) -->
+            <button onclick="window.location.href='login.php?role=host'">Host Event</button>
 
-        <form method="post" action="join.php" class="btn-group">
-            <input
-                type="text"
-                id="event_code"
-                name="event_code"
-                placeholder="Event PIN"
-                maxlength="6"
-                minlength="6"
-                pattern="[A-Za-z0-9]{6}"
-                autocomplete="off"
-                required
-                oninput="this.value = this.value
-                    .replace(/[^A-Za-z0-9]/g, '')
-                    .toUpperCase()"
-                value="<?= htmlspecialchars($prefillCode, ENT_QUOTES, 'UTF-8') ?>"
-            >
+            <form method="post" action="join.php" class="btn-group">
+                <input
+                    type="text"
+                    id="event_code"
+                    name="event_code"
+                    placeholder="Event PIN"
+                    maxlength="6"
+                    minlength="6"
+                    pattern="[A-Za-z0-9]{6}"
+                    autocomplete="off"
+                    required
+                    oninput="this.value = this.value
+                        .replace(/[^A-Za-z0-9]/g, '')
+                        .toUpperCase()"
+                    value="<?= htmlspecialchars($prefillCode, ENT_QUOTES, 'UTF-8') ?>"
+                >
 
-            <button
-                type="submit"
-                name="action"
-                value="<?= $isLoggedIn ? 'attend' : 'anonymous' ?>"
-                class="kahoot-btn"
-                id="enter-btn"
-                disabled
-                <?= !$isLoggedIn ? 'onclick="return confirm(\'Please confirm you are 21 years of age or older to enter.\')"' : '' ?>
-            >
-                Enter
-            </button>
-        </form>
-    </div>
+                <button
+                    type="submit"
+                    name="action"
+                    value="<?= $isLoggedIn ? 'attend' : 'anonymous' ?>"
+                    class="kahoot-btn"
+                    id="enter-btn"
+                    disabled
+                    <?= !$isLoggedIn ? 'onclick="return confirm(\'Please confirm you are 21 years of age or older to enter.\')"' : '' ?>
+                >
+                    Enter
+                </button>
+            </form>
+        </div>
+    </main>
 
     <script>
         (function () {
