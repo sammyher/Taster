@@ -7,9 +7,24 @@ if (empty($_SESSION['account_id']) && file_exists(__DIR__ . '/config/auth.php'))
         require_once __DIR__ . '/config/auth.php';
         $credentials = $auth0->getCredentials();
         if ($credentials) {
-            $_SESSION['account_id'] = $credentials->user['sub'];
-            $_SESSION['display_name'] = $credentials->user['name'] ?? $credentials->user['nickname'] ?? 'User';
-            $_SESSION['email'] = $credentials->user['email'] ?? '';
+            $user = $credentials->user;
+            $_SESSION['account_id'] = $user['sub'];
+            $given = $user['given_name'] ?? $user['user_metadata']['given_name'] ?? $user['user_metadata']['first_name'] ?? null;
+            if (!empty($given)) {
+                $name = trim((string) $given);
+            } else {
+                $name = trim((string) ($user['name'] ?? $user['nickname'] ?? ''));
+                if ($name === '' && !empty($user['email'])) {
+                    $name = (string) $user['email'];
+                }
+                if (str_contains($name, '@')) {
+                    $local = explode('@', $name)[0];
+                    $name = preg_split('/[._-]/', $local)[0] ?? $local;
+                }
+                $name = explode(' ', trim($name))[0];
+            }
+            $_SESSION['display_name'] = !empty($name) ? ucfirst(strtolower($name)) : 'User';
+            $_SESSION['email'] = $user['email'] ?? '';
         }
     } catch (Throwable $e) {
         // Not logged in or Auth0 session expired
@@ -17,7 +32,13 @@ if (empty($_SESSION['account_id']) && file_exists(__DIR__ . '/config/auth.php'))
 }
 
 $isLoggedIn = !empty($_SESSION['account_id']);
-$displayName = $_SESSION['display_name'] ?? 'Account';
+$rawName = $_SESSION['display_name'] ?? 'Account';
+if (str_contains($rawName, '@')) {
+    $local = explode('@', $rawName)[0];
+    $rawName = preg_split('/[._-]/', $local)[0] ?? $local;
+}
+$firstWord = explode(' ', trim($rawName))[0];
+$displayName = !empty($firstWord) ? ucfirst(strtolower($firstWord)) : 'Account';
 
 $prefillCode = strtoupper(trim((string) ($_GET['code'] ?? '')));
 if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
