@@ -74,6 +74,8 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             align-items: center;
             gap: 8px;
             max-width: calc(100% - 48px);
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
         .pill-btn {
             display: inline-flex;
@@ -158,7 +160,6 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
         }
 
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
-        form.btn-group { width: 100%; margin-top: 6px; }
         #event_code {
             text-align: center;
             font-size: 1.35rem;
@@ -247,6 +248,7 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
                 max-width: calc(100% - 24px);
                 justify-content: flex-end;
                 gap: 6px;
+                flex-wrap: wrap;
             }
             .pill-btn {
                 padding: 6px 9px;
@@ -285,6 +287,15 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             </svg>
             <span>About</span>
         </a>
+        <a href="host.php" class="pill-btn" title="Host an Event">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Host Event</span>
+        </a>
 
         <?php if ($isLoggedIn): ?>
             <a href="account.php" class="pill-btn user-pill" title="View Account Details">
@@ -319,40 +330,35 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             <p class="brand-subtitle">Beer Tasting Event Platform</p>
         </div>
 
-        <div class="btn-group">
-            <!-- 1. Host route (Auth0) -->
-            <button onclick="window.location.href='login.php?role=host'">Host Event</button>
+        <form method="post" action="join.php" class="btn-group">
+            <input
+                type="text"
+                id="event_code"
+                name="event_code"
+                placeholder="Event PIN"
+                maxlength="6"
+                minlength="6"
+                pattern="[A-Za-z0-9]{6}"
+                autocomplete="off"
+                required
+                oninput="this.value = this.value
+                    .replace(/[^A-Za-z0-9]/g, '')
+                    .toUpperCase()"
+                value="<?= htmlspecialchars($prefillCode, ENT_QUOTES, 'UTF-8') ?>"
+            >
 
-            <form method="post" action="join.php" class="btn-group">
-                <input
-                    type="text"
-                    id="event_code"
-                    name="event_code"
-                    placeholder="Event PIN"
-                    maxlength="6"
-                    minlength="6"
-                    pattern="[A-Za-z0-9]{6}"
-                    autocomplete="off"
-                    required
-                    oninput="this.value = this.value
-                        .replace(/[^A-Za-z0-9]/g, '')
-                        .toUpperCase()"
-                    value="<?= htmlspecialchars($prefillCode, ENT_QUOTES, 'UTF-8') ?>"
-                >
-
-                <button
-                    type="submit"
-                    name="action"
-                    value="<?= $isLoggedIn ? 'attend' : 'anonymous' ?>"
-                    class="kahoot-btn"
-                    id="enter-btn"
-                    disabled
-                    <?= !$isLoggedIn ? 'onclick="return confirm(\'Please confirm you are 21 years of age or older to enter.\')"' : '' ?>
-                >
-                    Enter
-                </button>
-            </form>
-        </div>
+            <button
+                type="submit"
+                name="action"
+                value="<?= $isLoggedIn ? 'attend' : 'anonymous' ?>"
+                class="kahoot-btn"
+                id="enter-btn"
+                disabled
+                <?= !$isLoggedIn ? 'onclick="return confirm(\'Please confirm you are 21 years of age or older to enter.\')"' : '' ?>
+            >
+                Enter
+            </button>
+        </form>
     </main>
 
     <script>
