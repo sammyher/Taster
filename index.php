@@ -1,3 +1,51 @@
+<?php
+declare(strict_types=1);
+session_start();
+
+if (empty($_SESSION['account_id']) && file_exists(__DIR__ . '/config/auth.php')) {
+    try {
+        require_once __DIR__ . '/config/auth.php';
+        $credentials = $auth0->getCredentials();
+        if ($credentials) {
+            $user = $credentials->user;
+            $_SESSION['account_id'] = $user['sub'];
+            $given = $user['given_name'] ?? $user['user_metadata']['given_name'] ?? $user['user_metadata']['first_name'] ?? null;
+            if (!empty($given)) {
+                $name = trim((string) $given);
+            } else {
+                $name = trim((string) ($user['name'] ?? $user['nickname'] ?? ''));
+                if ($name === '' && !empty($user['email'])) {
+                    $name = (string) $user['email'];
+                }
+                if (str_contains($name, '@')) {
+                    $local = explode('@', $name)[0];
+                    $name = preg_split('/[._-]/', $local)[0] ?? $local;
+                }
+                $name = explode(' ', trim($name))[0];
+            }
+            $_SESSION['display_name'] = !empty($name) ? ucfirst(strtolower($name)) : 'User';
+            $_SESSION['email'] = $user['email'] ?? '';
+        }
+    } catch (Throwable $e) {
+        // Not logged in or Auth0 session expired
+    }
+}
+
+$isLoggedIn = !empty($_SESSION['account_id']);
+$rawName = $_SESSION['display_name'] ?? 'Account';
+if (str_contains($rawName, '@')) {
+    $local = explode('@', $rawName)[0];
+    $rawName = preg_split('/[._-]/', $local)[0] ?? $local;
+}
+$firstWord = explode(' ', trim($rawName))[0];
+$firstWord = preg_replace('/\d+$/', '', $firstWord);
+$displayName = !empty($firstWord) ? ucfirst(strtolower($firstWord)) : 'Account';
+
+$prefillCode = strtoupper(trim((string) ($_GET['code'] ?? '')));
+if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
+    $prefillCode = '';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,38 +53,309 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taster - Home</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; gap: 1rem; }
-        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 220px; }
-        button { padding: 12px; font-size: 1rem; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background-color: #f7f7f7; }
-        button:hover { background-color: #ebebeb; }
+        @font-face {
+            font-family: 'CoorsScript';
+            src: url('assets/fonts/Coors Script Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'BrewHouse';
+            src: url('assets/fonts/BrewHouse Full.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            margin: 0;
+            padding: 24px 16px;
+            position: relative;
+            box-sizing: border-box;
+            background-color: #E8D5A0;
+            background-image:
+                radial-gradient(ellipse at top, #EFE0B0 0%, #E8D5A0 50%, #D4B96A 100%);
+        }
+        .top-nav {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: calc(100% - 48px);
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .pill-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 13px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #1B3A6B;
+            background: rgba(255, 248, 225, 0.85);
+            border: 1px solid #C4A135;
+            border-radius: 9999px;
+            text-decoration: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .pill-btn:hover {
+            color: #0f2347;
+            border-color: #9e7e1a;
+            background: rgba(255, 248, 210, 1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+        }
+        .user-pill span {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .pill-btn-login {
+            background-color: #1B3A6B;
+            color: #ffffff;
+            border-color: #1B3A6B;
+            font-weight: 600;
+        }
+        .pill-btn-login:hover {
+            background-color: #0f2347;
+            color: #ffffff;
+            border-color: #0f2347;
+            box-shadow: 0 2px 6px rgba(27, 58, 107, 0.35);
+        }
+        .pill-btn-logout {
+            background-color: #A31C2B;
+            color: #ffffff;
+            border-color: #A31C2B;
+            font-weight: 600;
+        }
+        .pill-btn-logout:hover {
+            background-color: #7e1520;
+            color: #ffffff;
+            border-color: #7e1520;
+            box-shadow: 0 2px 6px rgba(163, 28, 43, 0.35);
+        }
+
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 14vh;
+        }
+        .header-hero {
+            text-align: center;
+            margin: 0 0 1.25rem 0;
+        }
+        .brand-title {
+            margin: 0 0 6px 0;
+            font-size: 3rem;
+            font-weight: normal;
+            color: #1B3A6B;
+            letter-spacing: 1px;
+            font-family: 'CoorsScript', cursive;
+            text-shadow: 1px 2px 4px rgba(0,0,0,0.12);
+        }
+        .brand-subtitle {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #A31C2B;
+            font-weight: normal;
+            font-family: 'BrewHouse', serif;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+
+        .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
+        #event_code {
+            text-align: center;
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            padding: 14px 10px;
+            border: 2px solid #C4A135;
+            border-radius: 6px;
+            background-color: rgba(255, 248, 225, 0.9);
+            color: #1B3A6B;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        #event_code:focus {
+            border-color: #1B3A6B;
+            box-shadow: 0 0 0 3px rgba(27, 58, 107, 0.15);
+        }
+        #event_code:focus::placeholder {
+            color: transparent;
+        }
+        #event_code::placeholder {
+            font-weight: 700;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+            color: #9e8040;
+            transition: color 0.15s ease;
+        }
+        button {
+            padding: 13px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background-color: #f7f7f7;
+            transition: all 0.15s ease;
+        }
+        button:hover:not(:disabled) {
+            background-color: #ebebeb;
+        }
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .kahoot-btn {
+            background-color: #c9a86c;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1.15rem;
+            padding: 14px 12px;
+            border: none;
+            border-radius: 6px;
+            box-shadow: none;
+            cursor: not-allowed;
+            width: 100%;
+            box-sizing: border-box;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            letter-spacing: 0.5px;
+        }
+        .kahoot-btn:not(:disabled) {
+            background-color: #A31C2B;
+            color: #ffffff;
+            box-shadow: 0 4px 0 #7e1520;
+            cursor: pointer;
+        }
+        .kahoot-btn:not(:disabled):hover {
+            background-color: #8c1824;
+            box-shadow: 0 4px 0 #621018;
+        }
+        .kahoot-btn:not(:disabled):active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #621018;
+        }
+
+        /* Mobile Optimization (iPhone 16, SE, Android) */
+        @media (max-width: 480px) {
+            body {
+                padding-top: 56px;
+            }
+            .top-nav {
+                top: 14px;
+                right: 12px;
+                left: 12px;
+                max-width: calc(100% - 24px);
+                justify-content: flex-end;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .pill-btn {
+                padding: 6px 9px;
+                font-size: 0.8rem;
+                gap: 4px;
+            }
+            .pill-btn svg {
+                width: 13px;
+                height: 13px;
+            }
+            .user-pill span {
+                max-width: 80px;
+            }
+            .center-content {
+                margin-bottom: 12vh;
+            }
+            .header-hero {
+                margin-bottom: 1rem;
+            }
+            .brand-title {
+                font-size: 2.15rem;
+            }
+            .brand-subtitle {
+                font-size: 0.95rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <?php
-        $prefillCode = strtoupper(trim((string) ($_GET['code'] ?? '')));
+    <div class="top-nav">
+        <a href="about.php" class="pill-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>About</span>
+        </a>
+        <a href="host.php" class="pill-btn" title="Host an Event">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>Host Event</span>
+        </a>
 
-        if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
-            $prefillCode = '';
-        }
-    ?>
-    <h1>Taster</h1>
-    <p>Beer Tasting Event Platform</p>
+        <?php if ($isLoggedIn): ?>
+            <a href="account.php" class="pill-btn user-pill" title="View Account Details">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></span>
+            </a>
+            <a href="logout.php" class="pill-btn pill-btn-logout" title="Log out">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Log out</span>
+            </a>
+        <?php else: ?>
+            <a href="login.php?role=home" class="pill-btn pill-btn-login">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>Log in</span>
+            </a>
+        <?php endif; ?>
+    </div>
 
-    <div class="btn-group">
-        <!-- 1. About section -->
-        <button onclick="window.location.href='about.php'">About</button>
-
-        <!-- 2. Host route (Auth0) -->
-        <button onclick="window.location.href='login.php?role=host'">Host</button>
+    <main class="center-content">
+        <div class="header-hero">
+            <h1 class="brand-title">Taster</h1>
+            <p class="brand-subtitle">Beer Tasting Event Platform</p>
+        </div>
 
         <form method="post" action="join.php" class="btn-group">
-            <label for="event_code">Join an Event</label>
-
             <input
                 type="text"
                 id="event_code"
                 name="event_code"
-                placeholder="Enter six-character code"
+                placeholder="Event PIN"
                 maxlength="6"
                 minlength="6"
                 pattern="[A-Za-z0-9]{6}"
@@ -48,59 +367,46 @@
                 value="<?= htmlspecialchars($prefillCode, ENT_QUOTES, 'UTF-8') ?>"
             >
 
-            <p id="code-status" class="code-status" role="status"></p>
-
-            <button type="submit" name="action" value="attend">
-                Log In and Attend
-            </button>
-
             <button
                 type="submit"
                 name="action"
-                value="anonymous"
-                onclick="return confirm(
-                    'Please confirm you are 21 years of age or older.'
-                )"
+                value="<?= $isLoggedIn ? 'attend' : 'anonymous' ?>"
+                class="kahoot-btn"
+                id="enter-btn"
+                disabled
+                <?= !$isLoggedIn ? 'onclick="return confirm(\'Please confirm you are 21 years of age or older to enter.\')"' : '' ?>
             >
-                Attend Anonymously
+                Enter
             </button>
         </form>
-    </div>
+    </main>
 
-    <script>
-        function joinAnonymous() {
-            if (confirm("Please confirm you are 21 years of age or older to enter.")) {
-                window.location.href = "anonymous.php";
-            } else {
-                alert("Access Denied: You must be 21 or older.");
-            }
-        }
-    </script>
     <script>
         (function () {
             const input = document.getElementById('event_code');
-            const status = document.getElementById('code-status');
-            const joinButtons = document.querySelectorAll(
-                'button[name="action"]'
-            );
+            const enterButton = document.getElementById('enter-btn');
 
             let timer = null;
             let controller = null;
             let codeIsValid = false;
 
-            function showStatus(message, className = '') {
-                status.textContent = message;
-                status.className =
-                    'code-status' + (className ? ' ' + className : '');
+            // Instantly clear placeholder on click / focus, restore on blur if empty
+            input.addEventListener('focus', function () {
+                this.placeholder = '';
+            });
+
+            input.addEventListener('blur', function () {
+                if (!this.value) {
+                    this.placeholder = 'Event PIN';
+                }
+            });
+
+            function setButtonEnabled(enabled) {
+                codeIsValid = enabled;
+                enterButton.disabled = !enabled;
             }
 
-            function setButtonsEnabled(enabled) {
-                joinButtons.forEach(function (button) {
-                    button.disabled = !enabled;
-                });
-            }
-
-            setButtonsEnabled(false);
+            setButtonEnabled(false);
 
             input.addEventListener('input', function () {
                 const code = input.value
@@ -108,8 +414,7 @@
                     .toUpperCase();
 
                 input.value = code;
-                codeIsValid = false;
-                setButtonsEnabled(false);
+                setButtonEnabled(false);
 
                 clearTimeout(timer);
 
@@ -118,11 +423,8 @@
                 }
 
                 if (!/^[A-Z0-9]{6}$/.test(code)) {
-                    showStatus('');
                     return;
                 }
-
-                showStatus('Checking…');
 
                 timer = setTimeout(function () {
                     controller = new AbortController();
@@ -138,47 +440,33 @@
                         if (!response.ok) {
                             throw new Error('Server error');
                         }
-
                         return response.json();
                     })
                     .then(function (data) {
-                        // Ignore an old response if the user changed the code.
                         if (input.value !== code) {
                             return;
                         }
-
-                        codeIsValid = data.valid === true;
-
-                        if (codeIsValid) {
-                            showStatus('✓ Code found', 'ok');
-                            setButtonsEnabled(true);
-                        } else {
-                            showStatus('✗ Code not found', 'bad');
-                            setButtonsEnabled(false);
-                        }
+                        setButtonEnabled(data.valid === true);
                     })
                     .catch(function (error) {
                         if (error.name === 'AbortError') {
                             return;
                         }
-
-                        showStatus('Could not check the code right now.');
-                        setButtonsEnabled(false);
+                        setButtonEnabled(false);
                     });
-                }, 250);
+                }, 150);
             });
 
-            // Prevent submission unless the server has confirmed the code.
+            // Prevent submission unless the server has confirmed the code is valid.
             input.form.addEventListener('submit', function (event) {
                 if (!codeIsValid) {
                     event.preventDefault();
-                    showStatus('Please enter a valid event code.', 'bad');
                 }
             });
-        
-        if (input.value) {
-            input.dispatchEvent(new Event('input'));
-        }
+
+            if (input.value) {
+                input.dispatchEvent(new Event('input'));
+            }
         })();
     </script>
 </body>
