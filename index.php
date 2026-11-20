@@ -53,6 +53,18 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taster - Home</title>
     <style>
+        @font-face {
+            font-family: 'CoorsScript';
+            src: url('assets/fonts/Coors Script Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'BrewHouse';
+            src: url('assets/fonts/BrewHouse Full.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
@@ -65,6 +77,9 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             padding: 24px 16px;
             position: relative;
             box-sizing: border-box;
+            background-color: #E8D5A0;
+            background-image:
+                radial-gradient(ellipse at top, #EFE0B0 0%, #E8D5A0 50%, #D4B96A 100%);
         }
         .top-nav {
             position: absolute;
@@ -84,21 +99,21 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             padding: 7px 13px;
             font-size: 0.875rem;
             font-weight: 500;
-            color: #475569;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
+            color: #1B3A6B;
+            background: rgba(255, 248, 225, 0.85);
+            border: 1px solid #C4A135;
             border-radius: 9999px;
             text-decoration: none;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
             transition: all 0.2s ease;
             white-space: nowrap;
             flex-shrink: 0;
         }
         .pill-btn:hover {
-            color: #1e293b;
-            border-color: #cbd5e1;
-            background: #f8fafc;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            color: #0f2347;
+            border-color: #9e7e1a;
+            background: rgba(255, 248, 210, 1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
             transform: translateY(-1px);
         }
         .user-pill span {
@@ -108,28 +123,28 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             white-space: nowrap;
         }
         .pill-btn-login {
-            background-color: #2563eb;
+            background-color: #1B3A6B;
             color: #ffffff;
-            border-color: #2563eb;
+            border-color: #1B3A6B;
             font-weight: 600;
         }
         .pill-btn-login:hover {
-            background-color: #1d4ed8;
+            background-color: #0f2347;
             color: #ffffff;
-            border-color: #1d4ed8;
-            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+            border-color: #0f2347;
+            box-shadow: 0 2px 6px rgba(27, 58, 107, 0.35);
         }
         .pill-btn-logout {
-            background-color: #dc2626;
+            background-color: #A31C2B;
             color: #ffffff;
-            border-color: #dc2626;
+            border-color: #A31C2B;
             font-weight: 600;
         }
         .pill-btn-logout:hover {
-            background-color: #b91c1c;
+            background-color: #7e1520;
             color: #ffffff;
-            border-color: #b91c1c;
-            box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+            border-color: #7e1520;
+            box-shadow: 0 2px 6px rgba(163, 28, 43, 0.35);
         }
 
         .center-content {
@@ -147,16 +162,21 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
         }
         .brand-title {
             margin: 0 0 6px 0;
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: #111827;
-            letter-spacing: -0.5px;
+            font-size: 3rem;
+            font-weight: normal;
+            color: #1B3A6B;
+            letter-spacing: 1px;
+            font-family: 'CoorsScript', cursive;
+            text-shadow: 1px 2px 4px rgba(0,0,0,0.12);
         }
         .brand-subtitle {
             margin: 0;
-            font-size: 1.05rem;
-            color: #4b5563;
-            font-weight: 400;
+            font-size: 1.1rem;
+            color: #A31C2B;
+            font-weight: normal;
+            font-family: 'BrewHouse', serif;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.08);
         }
 
         .btn-group { display: flex; flex-direction: column; gap: 12px; width: 260px; }
@@ -166,18 +186,18 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             font-weight: 700;
             letter-spacing: 3px;
             padding: 14px 10px;
-            border: 2px solid #ccc;
+            border: 2px solid #C4A135;
             border-radius: 6px;
-            background-color: #fff;
-            color: #222;
+            background-color: rgba(255, 248, 225, 0.9);
+            color: #1B3A6B;
             width: 100%;
             box-sizing: border-box;
             outline: none;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         #event_code:focus {
-            border-color: #333;
-            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+            border-color: #1B3A6B;
+            box-shadow: 0 0 0 3px rgba(27, 58, 107, 0.15);
         }
         #event_code:focus::placeholder {
             color: transparent;
@@ -186,7 +206,7 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             font-weight: 700;
             font-size: 1.15rem;
             letter-spacing: 0.5px;
-            color: #9ca3af;
+            color: #9e8040;
             transition: color 0.15s ease;
         }
         button {
@@ -207,7 +227,7 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             cursor: not-allowed;
         }
         .kahoot-btn {
-            background-color: #cbd5e1;
+            background-color: #c9a86c;
             color: #ffffff;
             font-weight: 700;
             font-size: 1.15rem;
@@ -222,18 +242,18 @@ if (!preg_match('/^[A-Z0-9]{6}$/', $prefillCode)) {
             letter-spacing: 0.5px;
         }
         .kahoot-btn:not(:disabled) {
-            background-color: #2563eb;
+            background-color: #A31C2B;
             color: #ffffff;
-            box-shadow: 0 4px 0 #1d4ed8;
+            box-shadow: 0 4px 0 #7e1520;
             cursor: pointer;
         }
         .kahoot-btn:not(:disabled):hover {
-            background-color: #1d4ed8;
-            box-shadow: 0 4px 0 #1e40af;
+            background-color: #8c1824;
+            box-shadow: 0 4px 0 #621018;
         }
         .kahoot-btn:not(:disabled):active {
             transform: translateY(2px);
-            box-shadow: 0 2px 0 #1e40af;
+            box-shadow: 0 2px 0 #621018;
         }
 
         /* Mobile Optimization (iPhone 16, SE, Android) */
